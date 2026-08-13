@@ -1,0 +1,52 @@
+{
+  "providers": [
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "base_url": "https://api.openai.com/v1",
+      "models": ["gpt-4o", "gpt-4o-mini", "o3-mini"],
+      "requires_key": true,
+      "key_hint": "sk-..."
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic (Claude)",
+      "base_url": "https://api.anthropic.com/v1",
+      "models": ["claude-sonnet-4-20250514", "claude-haiku-4-5-20251001"],
+      "requires_key": true,
+      "key_hint": "sk-ant-..."
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "base_url": "https://api.deepseek.com/v1",
+      "models": ["deepseek-chat", "deepseek-reasoner"],
+      "requires_key": true,
+      "key_hint": "sk-..."
+    },
+    {
+      "id": "gemini",
+      "name": "Google Gemini",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "models": ["gemini-2.5-flash", "gemini-2.5-pro"],
+      "requires_key": true,
+      "key_hint": "AIza..."
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama（本地，无需 Key）",
+      "base_url": "http://localhost:11434/v1",
+      "models": ["llama3.1", "qwen2.5", "deepseek-r1"],
+      "requires_key": false,
+      "key_hint": ""
+    },
+    {
+      "id": "custom",
+      "name": "自定义（OpenAI 兼容）",
+      "base_url": "",
+      "models": [],
+      "requires_key": false,
+      "key_hint": ""
+    }
+  ]
+}
