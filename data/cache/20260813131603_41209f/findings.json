@@ -1,0 +1,125 @@
+[
+  {
+    "id": "F-01",
+    "title": "低分评论占比 98/300（确定性统计）",
+    "summary": "共 98 条 1-2 星评论。",
+    "kind": "deterministic_stat",
+    "evidence_review_ids": [],
+    "supporting_count": 0,
+    "confidence": "high",
+    "conflicting_review_ids": [],
+    "uncertainty": "仅反映评分分布",
+    "assumption": false,
+    "source": "cache_demo_stats"
+  },
+  {
+    "id": "F-02",
+    "title": "[缓存演示] 订阅与付费 相关反馈",
+    "summary": "缓存演示产物：基于规则归纳主题「订阅与付费」生成。实时运行时由 LLM 动态生成并附证据。",
+    "kind": "model_derived",
+    "evidence_review_ids": [
+      "14324972618",
+      "14329131554",
+      "14330714176",
+      "14334995806",
+      "14342854364",
+      "14359950060",
+      "14364512490",
+      "14365412685"
+    ],
+    "supporting_count": 8,
+    "confidence": "high",
+    "conflicting_review_ids": [],
+    "uncertainty": "缓存演示产物，非实时模型输出",
+    "assumption": false,
+    "source": "cache_demo"
+  },
+  {
+    "id": "F-03",
+    "title": "[缓存演示] 崩溃与稳定性 相关反馈",
+    "summary": "缓存演示产物：基于规则归纳主题「崩溃与稳定性」生成。实时运行时由 LLM 动态生成并附证据。",
+    "kind": "model_derived",
+    "evidence_review_ids": [
+      "14082318224",
+      "14106038479",
+      "14140886742",
+      "14147454883",
+      "14204125134",
+      "14220597773",
+      "14249980354",
+      "14286721683"
+    ],
+    "supporting_count": 8,
+    "confidence": "high",
+    "conflicting_review_ids": [],
+    "uncertainty": "缓存演示产物，非实时模型输出",
+    "assumption": false,
+    "source": "cache_demo"
+  },
+  {
+    "id": "F-04",
+    "title": "[缓存演示] 广告体验 相关反馈",
+    "summary": "缓存演示产物：基于规则归纳主题「广告体验」生成。实时运行时由 LLM 动态生成并附证据。",
+    "kind": "model_derived",
+    "evidence_review_ids": [
+      "14324972618",
+      "14329131554",
+      "14330714176",
+      "14359950060",
+      "14360927559",
+      "14365412685",
+      "14386691397",
+      "14395044140"
+    ],
+    "supporting_count": 8,
+    "confidence": "high",
+    "conflicting_review_ids": [],
+    "uncertainty": "缓存演示产物，非实时模型输出",
+    "assumption": false,
+    "source": "cache_demo"
+  },
+  {
+    "id": "F-05",
+    "title": "[缓存演示] 训练内容 相关反馈",
+    "summary": "缓存演示产物：基于规则归纳主题「训练内容」生成。实时运行时由 LLM 动态生成并附证据。",
+    "kind": "model_derived",
+    "evidence_review_ids": [
+      "14359950060",
+      "14360927559",
+      "14363613368",
+      "14364018861",
+      "14364512490",
+      "14365412685",
+      "14366479265",
+      "14366900095"
+    ],
+    "supporting_count": 8,
+    "confidence": "high",
+    "conflicting_review_ids": [],
+    "uncertainty": "缓存演示产物，非实时模型输出",
+    "assumption": false,
+    "source": "cache_demo"
+  },
+  {
+    "id": "F-06",
+    "title": "[缓存演示] 正面反馈 相关反馈",
+    "summary": "缓存演示产物：基于规则归纳主题「正面反馈」生成。实时运行时由 LLM 动态生成并附证据。",
+    "kind": "model_derived",
+    "evidence_review_ids": [
+      "14357059177",
+      "14359950060",
+      "14360927559",
+      "14363613368",
+      "14364018861",
+      "14364512490",
+      "14366479265",
+      "14366900095"
+    ],
+    "supporting_count": 8,
+    "confidence": "high",
+    "conflicting_review_ids": [],
+    "uncertainty": "缓存演示产物，非实时模型输出",
+    "assumption": false,
+    "source": "cache_demo"
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "input_count": 500,
+  "kept_count": 500,
+  "duplicate_count": 0,
+  "lang_distribution": {
+    "en": 447,
+    "unknown": 45,
+    "es": 5,
+    "af": 1,
+    "no": 1,
+    "nl": 1
+  },
+  "field_missing": {
+    "version": 0,
+    "date": 0,
+    "author": 0
+  }
+}

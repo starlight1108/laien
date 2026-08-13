@@ -1,0 +1,111 @@
+{
+  "update_plan": {
+    "summary": "缓存演示更新计划（按证据强度拆分 V1/V2）",
+    "versions": [
+      {
+        "version": "V1",
+        "title": "核心问题修复",
+        "scope": "高优先级需求",
+        "rationale": "证据最强"
+      },
+      {
+        "version": "V2",
+        "title": "体验优化",
+        "scope": "次优先级需求",
+        "rationale": "影响面较小"
+      }
+    ]
+  },
+  "requirements": [
+    {
+      "id": "R-01",
+      "title": "优化：订阅与付费 相关反馈",
+      "description": "缓存演示需求，实时运行时由 LLM 基于证据生成",
+      "priority": "P0",
+      "version": "V1",
+      "boundaries": "缓存演示边界",
+      "finding_ids": [
+        "F-02"
+      ],
+      "review_ids": [
+        "14324972618",
+        "14329131554",
+        "14330714176",
+        "14334995806"
+      ],
+      "assumption": false
+    },
+    {
+      "id": "R-02",
+      "title": "优化：崩溃与稳定性 相关反馈",
+      "description": "缓存演示需求，实时运行时由 LLM 基于证据生成",
+      "priority": "P1",
+      "version": "V2",
+      "boundaries": "缓存演示边界",
+      "finding_ids": [
+        "F-03"
+      ],
+      "review_ids": [
+        "14082318224",
+        "14106038479",
+        "14140886742",
+        "14147454883"
+      ],
+      "assumption": false
+    },
+    {
+      "id": "R-03",
+      "title": "优化：广告体验 相关反馈",
+      "description": "缓存演示需求，实时运行时由 LLM 基于证据生成",
+      "priority": "P1",
+      "version": "V2",
+      "boundaries": "缓存演示边界",
+      "finding_ids": [
+        "F-04"
+      ],
+      "review_ids": [
+        "14324972618",
+        "14329131554",
+        "14330714176",
+        "14359950060"
+      ],
+      "assumption": false
+    },
+    {
+      "id": "R-04",
+      "title": "优化：训练内容 相关反馈",
+      "description": "缓存演示需求，实时运行时由 LLM 基于证据生成",
+      "priority": "P1",
+      "version": "V2",
+      "boundaries": "缓存演示边界",
+      "finding_ids": [
+        "F-05"
+      ],
+      "review_ids": [
+        "14359950060",
+        "14360927559",
+        "14363613368",
+        "14364018861"
+      ],
+      "assumption": false
+    },
+    {
+      "id": "R-05",
+      "title": "优化：正面反馈 相关反馈",
+      "description": "缓存演示需求，实时运行时由 LLM 基于证据生成",
+      "priority": "P1",
+      "version": "V2",
+      "boundaries": "缓存演示边界",
+      "finding_ids": [
+        "F-06"
+      ],
+      "review_ids": [
+        "14357059177",
+        "14359950060",
+        "14360927559",
+        "14363613368"
+      ],
+      "assumption": false
+    }
+  ]
+}

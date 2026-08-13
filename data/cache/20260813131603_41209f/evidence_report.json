@@ -1,0 +1,53 @@
+{
+  "items": [
+    {
+      "finding_id": "F-01",
+      "status": "sufficient",
+      "supporting_count": 98,
+      "coverage": "覆盖版本数: 33（8.3.3, 8.3.4, 8.3.5, 8.4.0, 8.4.1…）",
+      "note": "支持样本 98 条，达到阈值 3"
+    },
+    {
+      "finding_id": "F-02",
+      "status": "sufficient",
+      "supporting_count": 12,
+      "coverage": "覆盖版本数: 33（8.3.3, 8.3.4, 8.3.5, 8.4.0, 8.4.1…）",
+      "note": "支持样本 12 条，达到阈值 3"
+    },
+    {
+      "finding_id": "F-03",
+      "status": "sufficient",
+      "supporting_count": 12,
+      "coverage": "覆盖版本数: 33（8.3.3, 8.3.4, 8.3.5, 8.4.0, 8.4.1…）",
+      "note": "支持样本 12 条，达到阈值 3"
+    },
+    {
+      "finding_id": "F-04",
+      "status": "sufficient",
+      "supporting_count": 12,
+      "coverage": "覆盖版本数: 33（8.3.3, 8.3.4, 8.3.5, 8.4.0, 8.4.1…）",
+      "note": "支持样本 12 条，达到阈值 3"
+    },
+    {
+      "finding_id": "F-05",
+      "status": "sufficient",
+      "supporting_count": 12,
+      "coverage": "覆盖版本数: 33（8.3.3, 8.3.4, 8.3.5, 8.4.0, 8.4.1…）",
+      "note": "支持样本 12 条，达到阈值 3"
+    },
+    {
+      "finding_id": "F-06",
+      "status": "sufficient",
+      "supporting_count": 12,
+      "coverage": "覆盖版本数: 33（8.3.3, 8.3.4, 8.3.5, 8.4.0, 8.4.1…）",
+      "note": "支持样本 12 条，达到阈值 3"
+    }
+  ],
+  "data_limitations": [
+    "本次共处理 500 条原始评论，去重后保留 500 条",
+    "语言分布: {'en': 447, 'unknown': 45, 'es': 5, 'af': 1, 'no': 1, 'nl': 1}",
+    "Apple RSS Feed 仅覆盖近期评论，最多约 500 条，可能不反映全部用户",
+    "模型结论仅基于已提供评论，不涉及未采集到的时间段或平台"
+  ],
+  "overall": "共 6 项发现：证据充分 6 项，证据不足 0 项，存在冲突 0 项。"
+}

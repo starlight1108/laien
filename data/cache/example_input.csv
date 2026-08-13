@@ -1,0 +1,13 @@
+id,title,content,rating,version,lang,country,date,author
+1,Great workouts,"Love the workout plans, really effective for home training",5,8.5.0,en,us,2026-06-01T10:00:00Z,alice
+2,Cant cancel subscription,"The app is good but I cannot cancel my subscription, it keeps charging me every month",1,8.5.0,en,us,2026-06-02T09:00:00Z,bob
+3,Too expensive,"Subscription price is way too high for what you get, not worth it",2,8.4.0,en,us,2026-06-03T11:00:00Z,carol
+4,Crash on startup,"App crashes immediately when I open it after the update, very frustrating",1,8.5.0,en,us,2026-06-04T12:00:00Z,dave
+5,Good but ads,"Workouts are nice but the ads are annoying, they interrupt every exercise",3,8.5.0,en,us,2026-06-05T08:00:00Z,eve
+6,Ads too many,"There are too many ads now, used to be better before",2,8.4.0,en,us,2026-06-06T14:00:00Z,frank
+7,Subscription trap,"Hidden charges on my credit card, this app is a subscription trap",1,8.5.0,en,us,2026-06-07T10:30:00Z,grace
+8,Love it,"Best home gym app I have ever used, keeps me motivated every day",5,8.5.0,en,us,2026-06-08T07:00:00Z,henry
+9,Plan quality,"The meal plans are not personalized and feel generic",3,8.4.0,en,us,2026-06-09T16:00:00Z,ivan
+10,Workouts excellent,"Excellent variety of workouts, really enjoy the new yoga classes",4,8.5.0,en,us,2026-06-10T09:30:00Z,judy
+11,Crash again,"Still crashing on startup even after reinstalling the app",1,8.5.0,en,us,2026-06-11T13:00:00Z,dave
+12,Cancel issue,"Tried to cancel but the cancel button is hidden deep in settings, annoying",2,8.5.0,en,us,2026-06-12T15:00:00Z,kate

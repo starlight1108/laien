@@ -1,0 +1,21 @@
+{
+  "scope": {
+    "filters": [
+      {
+        "field": "rating",
+        "op": "lte",
+        "value": 2,
+        "label": "仅低分评论(≤2星)"
+      }
+    ],
+    "focus": [],
+    "summary": "目标:low rating reviews and subscription; 约束:[{'field': 'rating', 'op': 'lte', 'value': 2, 'label': '仅低分评论(≤2星)'}]; 聚焦:整体"
+  },
+  "app_id": "839285684",
+  "country": "us",
+  "app_name": "Workout for Women: Home & Gym",
+  "current_version": "8.5.0",
+  "avg_rating": 4.84672,
+  "rating_count": 530777,
+  "primary_genre": "Health & Fitness"
+}

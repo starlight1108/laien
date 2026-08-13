@@ -1,0 +1,105 @@
+{
+  "run_id": "20260813131603_41209f",
+  "app_id": "839285684",
+  "app_name": null,
+  "url": null,
+  "goal": "整体用户问题（缓存演示）",
+  "provider": null,
+  "model": null,
+  "status": "succeeded",
+  "created_at": "2026-08-13T13:16:03.647282Z",
+  "finished_at": null,
+  "cache": true,
+  "cache_note": "离线缓存样例：评论数据真实采集自 Apple RSS Feed；主题/发现/PRD/测试用例为规则生成的演示产物，非实时模型输出",
+  "source": "url",
+  "stages": [
+    {
+      "stage": "scope",
+      "label": "1. 确定分析范围",
+      "status": "succeeded",
+      "started_at": null,
+      "finished_at": null,
+      "error": null,
+      "summary": {},
+      "artifacts": [],
+      "revisions": []
+    },
+    {
+      "stage": "collect",
+      "label": "2. 采集评论数据",
+      "status": "succeeded",
+      "started_at": null,
+      "finished_at": null,
+      "error": null,
+      "summary": {},
+      "artifacts": [],
+      "revisions": []
+    },
+    {
+      "stage": "clean",
+      "label": "3. 清洗·去重·结构化",
+      "status": "succeeded",
+      "started_at": null,
+      "finished_at": null,
+      "error": null,
+      "summary": {},
+      "artifacts": [],
+      "revisions": []
+    },
+    {
+      "stage": "analyze",
+      "label": "4. 动态分类与分析",
+      "status": "succeeded",
+      "started_at": null,
+      "finished_at": null,
+      "error": null,
+      "summary": {},
+      "artifacts": [],
+      "revisions": []
+    },
+    {
+      "stage": "evidence",
+      "label": "5. 证据充分性评估",
+      "status": "succeeded",
+      "started_at": null,
+      "finished_at": null,
+      "error": null,
+      "summary": {},
+      "artifacts": [],
+      "revisions": []
+    },
+    {
+      "stage": "prd",
+      "label": "6. 更新计划与 PRD",
+      "status": "succeeded",
+      "started_at": null,
+      "finished_at": null,
+      "error": null,
+      "summary": {},
+      "artifacts": [],
+      "revisions": []
+    },
+    {
+      "stage": "tests",
+      "label": "7. 生成测试用例",
+      "status": "succeeded",
+      "started_at": null,
+      "finished_at": null,
+      "error": null,
+      "summary": {},
+      "artifacts": [],
+      "revisions": []
+    },
+    {
+      "stage": "validate",
+      "label": "8. 可追溯性验证",
+      "status": "succeeded",
+      "started_at": null,
+      "finished_at": null,
+      "error": null,
+      "summary": {},
+      "artifacts": [],
+      "revisions": []
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "checks": [
+    {
+      "item_type": "finding",
+      "item_id": "F-01",
+      "ok": false,
+      "issues": [
+        "supporting_count(98) 与证据数(0) 不一致"
+      ],
+      "action": "revised"
+    },
+    {
+      "item_type": "finding",
+      "item_id": "F-02",
+      "ok": false,
+      "issues": [
+        "supporting_count(12) 与证据数(8) 不一致"
+      ],
+      "action": "revised"
+    },
+    {
+      "item_type": "finding",
+      "item_id": "F-03",
+      "ok": false,
+      "issues": [
+        "supporting_count(12) 与证据数(8) 不一致"
+      ],
+      "action": "revised"
+    },
+    {
+      "item_type": "finding",
+      "item_id": "F-04",
+      "ok": false,
+      "issues": [
+        "supporting_count(12) 与证据数(8) 不一致"
+      ],
+      "action": "revised"
+    },
+    {
+      "item_type": "finding",
+      "item_id": "F-05",
+      "ok": false,
+      "issues": [
+        "supporting_count(12) 与证据数(8) 不一致"
+      ],
+      "action": "revised"
+    },
+    {
+      "item_type": "finding",
+      "item_id": "F-06",
+      "ok": false,
+      "issues": [
+        "supporting_count(12) 与证据数(8) 不一致"
+      ],
+      "action": "revised"
+    },
+    {
+      "item_type": "requirement",
+      "item_id": "R-01",
+      "ok": true,
+      "issues": [],
+      "action": "keep"
+    },
+    {
+      "item_type": "requirement",
+      "item_id": "R-02",
+      "ok": true,
+      "issues": [],
+      "action": "keep"
+    },
+    {
+      "item_type": "requirement",
+      "item_id": "R-03",
+      "ok": true,
+      "issues": [],
+      "action": "keep"
+    },
+    {
+      "item_type": "requirement",
+      "item_id": "R-04",
+      "ok": true,
+      "issues": [],
+      "action": "keep"
+    },
+    {
+      "item_type": "requirement",
+      "item_id": "R-05",
+      "ok": true,
+      "issues": [],
+      "action": "keep"
+    },
+    {
+      "item_type": "test_case",
+      "item_id": "TC-01",
+      "ok": true,
+      "issues": [],
+      "action": "keep"
+    },
+    {
+      "item_type": "test_case",
+      "item_id": "TC-02",
+      "ok": true,
+      "issues": [],
+      "action": "keep"
+    },
+    {
+      "item_type": "test_case",
+      "item_id": "TC-03",
+      "ok": true,
+      "issues": [],
+      "action": "keep"
+    },
+    {
+      "item_type": "test_case",
+      "item_id": "TC-04",
+      "ok": true,
+      "issues": [],
+      "action": "keep"
+    },
+    {
+      "item_type": "test_case",
+      "item_id": "TC-05",
+      "ok": true,
+      "issues": [],
+      "action": "keep"
+    },
+    {
+      "item_type": "finding",
+      "item_id": "(未覆盖)",
+      "ok": false,
+      "issues": [
+        "以下发现未被任何需求引用: ['F-01']"
+      ],
+      "action": "assumption"
+    }
+  ],
+  "summary": {
+    "total": 17,
+    "ok": 10,
+    "issues": 7
+  },
+  "revisions": [
+    "F-01: supporting_count 已按证据数修订",
+    "F-02: supporting_count 已按证据数修订",
+    "F-03: supporting_count 已按证据数修订",
+    "F-04: supporting_count 已按证据数修订",
+    "F-05: supporting_count 已按证据数修订",
+    "F-06: supporting_count 已按证据数修订"
+  ]
+}
