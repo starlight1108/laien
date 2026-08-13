@@ -55,6 +55,12 @@ class LLMTestRequest(BaseModel):
     api_key: str = ""
 
 
+class LLMModelsRequest(BaseModel):
+    provider: Optional[str] = None
+    base_url: Optional[str] = None
+    api_key: str = ""
+
+
 # --------------------------------------------------------------------------
 # Providers
 # --------------------------------------------------------------------------
@@ -82,6 +88,48 @@ async def health() -> dict:
 @app.get("/api/providers")
 async def providers() -> dict:
     return {"providers": PROVIDERS}
+
+
+@app.post("/api/llm/models")
+async def llm_models(req: LLMModelsRequest) -> dict:
+    """根据用户 Key 从提供商拉取可用模型列表；失败时降级为预置列表并说明。"""
+    base_url = req.base_url or _provider_base_url(req.provider or "") or settings.llm_base_url
+    api_key = req.api_key or settings.llm_api_key
+    if not base_url:
+        return {"models": [], "source": "fallback", "error": "缺少 Base URL"}
+    try:
+        # 强制 15s 超时：网络挂起（如无外网）时快速降级，避免长时间等待
+        models = await asyncio.wait_for(
+            asyncio.to_thread(_fetch_models, base_url, api_key), timeout=15
+        )
+        return {"models": models, "source": "api"}
+    except asyncio.TimeoutError:
+        error = "连接超时（15s 内未响应），请检查网络或 Base URL"
+    except Exception as e:  # noqa: BLE001
+        error = str(e) or type(e).__name__
+    fallback = []
+    for p in PROVIDERS:
+        if p["id"] == req.provider:
+            fallback = list(p.get("models", []))
+    return {"models": fallback, "source": "fallback", "error": error}
+
+
+def _fetch_models(base_url: str, api_key: str) -> list[str]:
+    """调用 OpenAI 兼容的 /models 端点（Ollama 本地同样支持）。
+
+    降低超时与重试，使无效 Key/连接失败时快速降级到预置列表。
+    """
+    from openai import OpenAI
+
+    client = OpenAI(
+        base_url=base_url,
+        api_key=api_key or "not-needed",
+        timeout=20,
+        max_retries=0,
+    )
+    data = client.models.list()
+    names = [m.id for m in data.data]
+    return sorted(names)
 
 
 @app.post("/api/llm/test")

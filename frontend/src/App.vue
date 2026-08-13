@@ -31,10 +31,10 @@ onMounted(async () => {
 })
 
 function syncLlmDefaults() {
+  // 只带出默认 Base URL；模型列表由"获取模型"在填入 Key 后拉取
   const p = store.providers.find((x) => x.id === store.llm.provider)
   if (p) {
     store.llm.base_url = p.base_url
-    if (!store.llm.model && p.models?.length) store.llm.model = p.models[0]
   }
 }
 

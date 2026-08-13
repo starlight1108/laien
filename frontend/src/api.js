@@ -1,10 +1,21 @@
 const BASE = ''
 
-async function request(path, options = {}) {
-  const resp = await fetch(BASE + path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options
-  })
+async function request(path, options = {}, timeoutMs = 0) {
+  const controller = timeoutMs ? new AbortController() : null
+  const timer = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null
+  let resp
+  try {
+    resp = await fetch(BASE + path, {
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller?.signal,
+      ...options
+    })
+  } catch (e) {
+    if (e?.name === 'AbortError') throw new Error('请求超时，请检查网络或服务配置')
+    throw e
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
   let data = null
   try {
     data = await resp.json()
@@ -27,7 +38,9 @@ export const listRuns = () => request('/api/runs')
 export const getArtifact = (id, name) => request(`/api/runs/${id}/artifacts/${name}`)
 export const listArtifacts = (id) => request(`/api/runs/${id}/artifacts`)
 export const testLLM = (payload) =>
-  request('/api/llm/test', { method: 'POST', body: JSON.stringify(payload) })
+  request('/api/llm/test', { method: 'POST', body: JSON.stringify(payload) }, 30000)
+export const fetchModels = (payload) =>
+  request('/api/llm/models', { method: 'POST', body: JSON.stringify(payload) }, 20000)
 
 export function streamRun(id, onEvent) {
   const es = new EventSource(`/api/runs/${id}/events`)
