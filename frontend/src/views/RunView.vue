@@ -64,6 +64,16 @@ const activeTab = computed(() => store.activeTab)
 let es = null
 let timer = null
 
+// 终态集合：进入后停止轮询（SSE 与轮询双通道共享）
+const TERMINAL_STATUSES = new Set(['succeeded', 'failed', 'degraded'])
+
+function stopPolling() {
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+  }
+}
+
 const tabs = [
   { id: 'progress', label: '执行进度' },
   { id: 'reviews', label: '原始评论' },
@@ -107,18 +117,21 @@ onMounted(async () => {
       if (meta.value) meta.value.stages = list
     } else if (event.type === 'run_end') {
       meta.value.status = event.status
+      stopPolling()
     }
   })
-  // 轮询兜底
+  // 轮询兜底：SSE 断开时保障状态收敛；进入终态后停止，避免无谓请求
   timer = setInterval(async () => {
     try {
-      meta.value = await getRun(runId.value)
+      const m = await getRun(runId.value)
+      meta.value = m
+      if (TERMINAL_STATUSES.has(m?.status)) stopPolling()
     } catch { /* ignore */ }
   }, 3000)
 })
 
 onBeforeUnmount(() => {
   es?.close()
-  if (timer) clearInterval(timer)
+  stopPolling()
 })
 </script>

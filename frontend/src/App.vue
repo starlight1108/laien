@@ -40,7 +40,7 @@ function syncLlmDefaults(saved) {
   // 优先使用持久化的配置；未保存的字段才带出提供商默认值
   const p = store.providers.find((x) => x.id === (saved?.provider || store.llm.provider))
   if (saved?.provider && p) store.llm.provider = p.id
-  store.llm.base_url = saved?.base_url || p?.base_url || store.llm.base_url
+  store.llm.base_url = saved?.base_url || p?.base_url || store.llm.base_url || ''
   store.llm.model = saved?.model || ''
   store.llm.api_key = saved?.api_key || ''
   store.llm.models = []

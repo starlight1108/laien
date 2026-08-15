@@ -101,7 +101,8 @@ const selectValue = computed({
 function onProviderChange() {
   const p = currentProvider.value
   if (!p) return
-  store.llm.base_url = p.base_url
+  // 只在用户未自定义 Base URL 时带出提供商默认值，避免覆盖已持久化的中转地址
+  store.llm.base_url = p.base_url || store.llm.base_url
   store.llm.model = ''
   store.llm.models = []
   store.llm.modelsState = 'idle'

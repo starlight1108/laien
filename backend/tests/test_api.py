@@ -23,15 +23,21 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
-@pytest.fixture()
-def server(temp_settings, monkeypatch):
-    """后台线程启动 uvicorn 服务器，返回 base_url。
+@pytest.fixture(scope="session")
+def server():
+    """后台线程启动 uvicorn 服务器，返回 base_url（整个会话仅启动一次）。
 
-    与 TestClient 不同，requests 需要真实 HTTP 服务。服务器与测试
-    同进程，因此 temp_settings 重定向的数据目录对其同样生效。
+    与 TestClient 不同，requests 需要真实 HTTP 服务。服务器与测试同进程：
+    请求处理时动态读取 settings 单例，因此各测试的 temp_settings 数据目录
+    重定向依然生效，函数级隔离不变。44 个测试反复启停服务器会显著拖慢套件，
+    故用 session 级只启动一次。
     """
     # start 置为 no-op：只验证接口契约，不真正跑流水线（离线、确定性）
-    monkeypatch.setattr(orchestrator, "start", lambda run_id: None)
+    def _noop_start(*args) -> None:
+        return None
+
+    original_start = orchestrator.start
+    orchestrator.start = _noop_start
 
     port = _free_port()
     config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
@@ -40,22 +46,28 @@ def server(temp_settings, monkeypatch):
     thread.start()
     base = f"http://127.0.0.1:{port}"
 
-    # 等待服务就绪（uvicorn.started + health 双保险）
+    # 等待服务就绪（uvicorn.started + health 双保险），超时则明确报错而非静默继续
+    started = False
     for _ in range(200):
         if getattr(server, "started", False):
+            started = True
             break
         time.sleep(0.02)
+    healthy = False
     for _ in range(50):
         try:
             if requests.get(base + "/api/health", timeout=0.3).status_code == 200:
+                healthy = True
                 break
         except requests.RequestException:
             time.sleep(0.05)
+    assert started and healthy, "uvicorn 服务器启动失败或 /api/health 未就绪"
 
     yield base
 
     server.should_exit = True
     thread.join(timeout=5)
+    orchestrator.start = original_start
 
 
 # --------------------------------------------------------------------------

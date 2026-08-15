@@ -11,13 +11,6 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
-def _env_bool(name: str, default: bool) -> bool:
-    v = os.getenv(name)
-    if v is None:
-        return default
-    return v.strip().lower() in {"1", "true", "yes", "on"}
-
-
 @dataclass
 class Settings:
     # ---- 数据目录（默认以项目根为基准；可用环境变量覆盖）----
