@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from .config import settings
 from .llm.client import LLMClient
+from .llm.config_store import load_llm_config, load_provider_config, save_provider_config
 from .llm.prompts import _GROUNDING_RULES  # noqa: F401  (确保提示词模块可导入)
 from .pipeline.orchestrator import orchestrator
 from .services.importing import ImportError_, normalize_import_item, parse_import_text
@@ -61,6 +62,13 @@ class LLMModelsRequest(BaseModel):
     api_key: str = ""
 
 
+class LLMConfigRequest(BaseModel):
+    provider: Optional[str] = None
+    base_url: Optional[str] = None
+    model: Optional[str] = None
+    api_key: str = ""
+
+
 # --------------------------------------------------------------------------
 # Providers
 # --------------------------------------------------------------------------
@@ -80,6 +88,29 @@ def _provider_base_url(provider_id: str) -> str:
     return ""
 
 
+def _resolve_llm_config(
+    provider: Optional[str], base_url: str, model: str, api_key: str
+) -> tuple[str, str, str]:
+    """LLM 参数兜底顺序：请求值 → 该提供商本地保存的配置槽位 → 提供商预置/环境变量。
+
+    配置按提供商分槽保存，按 provider 精确查找 —— 切换提供商后绝不会串用
+    另一家已保存的 Key / Base URL。
+    """
+    saved = load_provider_config(provider or "")
+    if not base_url:
+        if saved.get("base_url"):
+            base_url = saved["base_url"]
+        if not base_url:
+            base_url = _provider_base_url(provider or "")
+        if not base_url:
+            base_url = settings.llm_base_url
+    if not model:
+        model = saved.get("model") or settings.llm_model
+    if not api_key:
+        api_key = saved.get("api_key") or settings.llm_api_key
+    return base_url, model, api_key
+
+
 @app.get("/api/health")
 async def health() -> dict:
     return {"ok": True, "app": "app-review-insights"}
@@ -90,11 +121,24 @@ async def providers() -> dict:
     return {"providers": PROVIDERS}
 
 
+@app.get("/api/llm/config")
+async def get_llm_config() -> dict:
+    """读取本地保存的全部提供商模型配置（按提供商分槽）。"""
+    return load_llm_config()
+
+
+@app.put("/api/llm/config")
+async def put_llm_config(req: LLMConfigRequest) -> dict:
+    """把模型配置写入本地 JSON 文件对应提供商的槽位（data/llm_config.json，已 gitignore）。"""
+    if not req.provider:
+        raise HTTPException(status_code=400, detail="缺少 provider")
+    return save_provider_config(req.provider, req.model_dump())
+
+
 @app.post("/api/llm/models")
 async def llm_models(req: LLMModelsRequest) -> dict:
     """根据用户 Key 从提供商拉取可用模型列表；失败时降级为预置列表并说明。"""
-    base_url = req.base_url or _provider_base_url(req.provider or "") or settings.llm_base_url
-    api_key = req.api_key or settings.llm_api_key
+    base_url, _, api_key = _resolve_llm_config(req.provider, req.base_url or "", "", req.api_key)
     if not base_url:
         return {"models": [], "source": "fallback", "error": "缺少 Base URL"}
     try:
@@ -134,9 +178,9 @@ def _fetch_models(base_url: str, api_key: str) -> list[str]:
 
 @app.post("/api/llm/test")
 async def test_llm(req: LLMTestRequest) -> dict:
-    base_url = req.base_url or _provider_base_url(req.provider or "") or settings.llm_base_url
-    model = req.model or settings.llm_model
-    api_key = req.api_key or settings.llm_api_key
+    base_url, model, api_key = _resolve_llm_config(
+        req.provider, req.base_url or "", req.model or "", req.api_key
+    )
     try:
         client = LLMClient(
             base_url=base_url,
@@ -172,15 +216,17 @@ async def create_run(req: RunRequest) -> dict:
         except ImportError_ as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
-    base_url = req.base_url or _provider_base_url(req.provider or "") or None
+    base_url, model, api_key = _resolve_llm_config(
+        req.provider, req.base_url or "", req.model or "", req.api_key
+    )
     try:
         meta = orchestrator.create_run(
             url=req.url,
             goal=req.goal,
             provider=req.provider,
-            model=req.model,
-            base_url=base_url,
-            api_key=req.api_key,
+            model=model or None,
+            base_url=base_url or None,
+            api_key=api_key,
             import_data=import_data,
         )
     except ValueError as e:

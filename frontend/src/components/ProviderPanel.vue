@@ -37,7 +37,7 @@
           v-model="store.llm.api_key"
           type="password"
           autocomplete="off"
-          placeholder="填写 API Key（自动保存到浏览器本地）"
+          placeholder="填写 API Key（自动保存到服务器本地）"
         />
       </div>
     </div>
@@ -52,14 +52,14 @@
       <span v-else-if="store.llm.modelsState === 'fail'" class="badge err">{{ store.llm.modelsMsg }}</span>
       <span v-if="store.llm.testState === 'ok'" class="badge ok">✓ 连接成功</span>
       <span v-else-if="store.llm.testState === 'fail'" class="badge err">{{ store.llm.testMsg }}</span>
-      <span class="small muted">Key 已保存到浏览器本地（localStorage），仅本机可见；请勿在公共/共享设备上使用</span>
+      <span class="small muted">Key 已保存到服务器本地 data/llm_config.json（已 gitignore），仅本机可见；请勿在公共/共享设备上使用</span>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
-import { store } from '../store'
+import { store, savedFor } from '../store'
 import { testLLM, fetchModels as fetchModelsApi } from '../api'
 
 const currentProvider = computed(() =>
@@ -101,9 +101,12 @@ const selectValue = computed({
 function onProviderChange() {
   const p = currentProvider.value
   if (!p) return
-  // 只在用户未自定义 Base URL 时带出提供商默认值，避免覆盖已持久化的中转地址
-  store.llm.base_url = p.base_url || store.llm.base_url
-  store.llm.model = ''
+  // 载入该提供商已保存的配置：base_url 优先已保存值，其次提供商默认值；
+  // 不带入上一家提供商的 Key / 中转地址（各提供商独立持久化）
+  const saved = savedFor(p.id)
+  store.llm.base_url = saved?.base_url || p.base_url || ''
+  store.llm.model = saved?.model || ''
+  store.llm.api_key = saved?.api_key || ''
   store.llm.models = []
   store.llm.modelsState = 'idle'
   store.llm.modelsMsg = ''

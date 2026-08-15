@@ -41,6 +41,9 @@ export const testLLM = (payload) =>
   request('/api/llm/test', { method: 'POST', body: JSON.stringify(payload) }, 30000)
 export const fetchModels = (payload) =>
   request('/api/llm/models', { method: 'POST', body: JSON.stringify(payload) }, 20000)
+export const getLlmConfig = () => request('/api/llm/config')
+export const saveLlmConfig = (cfg) =>
+  request('/api/llm/config', { method: 'PUT', body: JSON.stringify(cfg) })
 
 export function streamRun(id, onEvent) {
   const es = new EventSource(`/api/runs/${id}/events`)

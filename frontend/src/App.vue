@@ -21,8 +21,8 @@ import HomeView from './views/HomeView.vue'
 import RunView from './views/RunView.vue'
 
 onMounted(async () => {
-  // 恢复持久化的模型配置（provider/base_url/model/api_key）
-  const saved = loadLlmConfig()
+  // 从后端本地 JSON 文件恢复持久化的模型配置（provider/base_url/model/api_key）
+  const saved = await loadLlmConfig()
   try {
     const data = await getProviders()
     store.providers = data.providers || []

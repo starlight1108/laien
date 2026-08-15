@@ -165,6 +165,133 @@ def test_llm_test_error(monkeypatch, server):
 
 
 # --------------------------------------------------------------------------
+# LLM 配置持久化（本地 JSON 文件，按提供商分槽，已 gitignore）
+# --------------------------------------------------------------------------
+def test_llm_config_empty_default(server, temp_settings):
+    """文件不存在时返回空分槽结构。"""
+    r = requests.get(server + "/api/llm/config", timeout=5)
+    assert r.status_code == 200
+    assert r.json() == {"providers": {}}
+
+
+def test_llm_config_roundtrip(server, temp_settings):
+    """PUT 写入本地文件对应提供商槽位，GET 能读回同一份配置。"""
+    cfg = {
+        "provider": "openai",
+        "base_url": "https://api.openai.com/v1",
+        "model": "gpt-4o",
+        "api_key": "sk-secret",
+    }
+    r = requests.put(server + "/api/llm/config", json=cfg, timeout=5)
+    assert r.status_code == 200
+    # 响应为槽位内容（不含 provider 本身）
+    assert r.json() == {"base_url": cfg["base_url"], "model": cfg["model"], "api_key": cfg["api_key"]}
+    # 文件落在临时数据目录，结构为按提供商分槽
+    config_file = temp_settings.data_dir / "llm_config.json"
+    assert config_file.exists()
+    assert json.loads(config_file.read_text(encoding="utf-8")) == {"providers": {"openai": {
+        "base_url": cfg["base_url"], "model": cfg["model"], "api_key": cfg["api_key"],
+    }}}
+
+    r = requests.get(server + "/api/llm/config", timeout=5)
+    assert r.status_code == 200
+    assert r.json()["providers"]["openai"] == {
+        "base_url": cfg["base_url"], "model": cfg["model"], "api_key": cfg["api_key"],
+    }
+
+
+def test_llm_config_requires_provider(server, temp_settings):
+    """PUT 未指定 provider 时返回 400。"""
+    r = requests.put(server + "/api/llm/config", json={"base_url": "https://x/v1"}, timeout=5)
+    assert r.status_code == 400
+
+
+def test_llm_config_saves_empty_fields(server, temp_settings):
+    """清空 Key 后写入空字符串，应如实保存（允许保存"无 Key"状态）。"""
+    config_file = temp_settings.data_dir / "llm_config.json"
+    requests.put(
+        server + "/api/llm/config",
+        json={"provider": "ollama", "base_url": "http://127.0.0.1:11434/v1", "model": "", "api_key": ""},
+        timeout=5,
+    )
+    slots = requests.get(server + "/api/llm/config", timeout=5).json()["providers"]
+    assert slots["ollama"] == {"base_url": "http://127.0.0.1:11434/v1", "model": "", "api_key": ""}
+    assert json.loads(config_file.read_text(encoding="utf-8"))["providers"]["ollama"]["api_key"] == ""
+
+
+def test_llm_models_uses_saved_config(monkeypatch, server, temp_settings):
+    """请求未带 base_url/api_key 时，兜底使用该提供商本地保存的配置。"""
+    requests.put(
+        server + "/api/llm/config",
+        json={"provider": "openai", "base_url": "https://saved.example.com/v1", "api_key": "sk-saved"},
+        timeout=5,
+    )
+    seen = {}
+
+    def fake(base_url, api_key):
+        seen["base_url"] = base_url
+        seen["api_key"] = api_key
+        return ["gpt-4o"]
+
+    monkeypatch.setattr("app.main._fetch_models", fake)
+    r = requests.post(server + "/api/llm/models", json={"provider": "openai"}, timeout=5)
+    assert r.status_code == 200
+    assert r.json()["source"] == "api"
+    assert seen["base_url"] == "https://saved.example.com/v1"
+    assert seen["api_key"] == "sk-saved"
+
+
+def test_provider_config_not_leaked(monkeypatch, server, temp_settings):
+    """切换提供商后兜底不会串用另一家已保存的 Key / Base URL（回归：deepseek Key 误用于别家）。"""
+    requests.put(
+        server + "/api/llm/config",
+        json={"provider": "deepseek", "base_url": "https://api.deepseek.com/v1", "api_key": "sk-ds"},
+        timeout=5,
+    )
+    requests.put(
+        server + "/api/llm/config",
+        json={"provider": "openai", "base_url": "https://api.openai.com/v1", "api_key": "sk-oa"},
+        timeout=5,
+    )
+    # 两家互不覆盖
+    slots = requests.get(server + "/api/llm/config", timeout=5).json()["providers"]
+    assert slots["deepseek"] == {"base_url": "https://api.deepseek.com/v1", "model": "", "api_key": "sk-ds"}
+    assert slots["openai"] == {"base_url": "https://api.openai.com/v1", "model": "", "api_key": "sk-oa"}
+
+    seen = {}
+
+    def fake(base_url, api_key):
+        seen["base_url"] = base_url
+        seen["api_key"] = api_key
+        return ["x"]
+
+    monkeypatch.setattr("app.main._fetch_models", fake)
+    # 请求指定 openai：兜底必须用 openai 槽位，而不是 deepseek 的 Key
+    r = requests.post(server + "/api/llm/models", json={"provider": "openai"}, timeout=5)
+    assert r.status_code == 200
+    assert seen == {"base_url": "https://api.openai.com/v1", "api_key": "sk-oa"}
+
+
+def test_llm_config_migrates_flat_format(server, temp_settings):
+    """旧版扁平结构（单提供商）自动迁移为分槽结构，不丢 Key，且文件立即回写自愈。"""
+    config_file = temp_settings.data_dir / "llm_config.json"
+    config_file.write_text(
+        json.dumps(
+            {"provider": "deepseek", "base_url": "https://api.deepseek.com/v1",
+             "model": "deepseek-chat", "api_key": "sk-old"}
+        ),
+        encoding="utf-8",
+    )
+    r = requests.get(server + "/api/llm/config", timeout=5)
+    slots = r.json()["providers"]
+    assert slots["deepseek"] == {"base_url": "https://api.deepseek.com/v1", "model": "deepseek-chat", "api_key": "sk-old"}
+    # 迁移同时回写磁盘：再次读取即是分槽结构
+    assert json.loads(config_file.read_text(encoding="utf-8")) == {"providers": {"deepseek": {
+        "base_url": "https://api.deepseek.com/v1", "model": "deepseek-chat", "api_key": "sk-old",
+    }}}
+
+
+# --------------------------------------------------------------------------
 # 创建运行
 # --------------------------------------------------------------------------
 def test_create_run_with_import_text(server):

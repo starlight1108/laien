@@ -14,6 +14,8 @@ venv/
 # 运行时数据（缓存示例除外，data/cache 需提交）
 data/runs/
 data/app.db
+# 用户模型配置（含 API Key，明文，禁止入库）
+data/llm_config.json
 # 从 backend/ 目录启动 uvicorn 时产生的运行时数据壳（与根 data/ 同构，均不提交）
 backend/data/
 
