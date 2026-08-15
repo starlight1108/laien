@@ -117,14 +117,21 @@ def test_llm_models_with_fetch(monkeypatch, server):
 
 
 def test_llm_models_timeout_fallback(monkeypatch, server):
-    """mock _fetch_models 抛超时异常时降级为预置列表。"""
+    """mock _fetch_models 抛超时异常时降级为空列表并说明（不再回退预置模型列表）。"""
     def slow(base_url, api_key):
         raise TimeoutError("timeout")
 
     monkeypatch.setattr("app.main._fetch_models", slow)
-    r = requests.post(server + "/api/llm/models", json={"base_url": "https://api.example.com/v1"}, timeout=5)
+    r = requests.post(
+        server + "/api/llm/models",
+        json={"provider": "openai", "base_url": "https://api.example.com/v1"},
+        timeout=5,
+    )
     assert r.status_code == 200
-    assert r.json()["source"] == "fallback"
+    data = r.json()
+    assert data["source"] == "fallback"
+    assert data["models"] == []
+    assert "error" in data
 
 
 def test_llm_test_ok(monkeypatch, server):

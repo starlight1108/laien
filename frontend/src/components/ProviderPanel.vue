@@ -66,19 +66,16 @@ const currentProvider = computed(() =>
   store.providers.find((p) => p.id === store.llm.provider)
 )
 
-// 优先使用拉取到的模型，否则用预置模型作建议
-const modelOptions = computed(() => {
-  const fetched = store.llm.models
-  if (fetched?.length) return fetched
-  return currentProvider.value?.models || []
-})
+// 模型下拉仅展示从提供商拉取到的模型（不再回退 providers.json 预置列表）；
+// 未拉取成功时下拉为空，靠「自定义」手动输入模型名
+const modelOptions = computed(() => store.llm.models || [])
 
 const modelHint = computed(() => {
   if (store.llm.modelsState === 'ok') return `已从提供商拉取 ${store.llm.models.length} 个模型，下拉可查看完整列表`
-  if (store.llm.modelsState === 'fail') return '自动拉取失败，可下拉选择或选「自定义」手动输入模型名'
+  if (store.llm.modelsState === 'fail') return '自动拉取失败，可选「自定义」手动输入模型名'
   if (currentProvider.value?.requires_key === false)
-    return '本地模型：无需 Key，可直接获取模型'
-  return '填写 API Key 后点击「获取模型」拉取可用模型'
+    return '本地模型：无需 Key，切换提供商时自动拉取模型'
+  return '填写 API Key 后点击「获取模型」拉取可用模型（切换提供商时自动拉取）'
 })
 
 // 自定义模式为独立 UI 状态：选中「自定义」后保持输入框显示，不受 model 值影响
@@ -98,7 +95,7 @@ const selectValue = computed({
   }
 })
 
-function onProviderChange() {
+async function onProviderChange() {
   const p = currentProvider.value
   if (!p) return
   // 载入该提供商已保存的配置：base_url 优先已保存值，其次提供商默认值；
@@ -112,9 +109,14 @@ function onProviderChange() {
   store.llm.modelsMsg = ''
   store.llm.testState = 'idle'
   store.llm.testMsg = ''
+  // 有 Key（或本地模型无需 Key）时自动拉取模型列表，省去手动点「获取模型」
+  if (store.llm.api_key || (p.requires_key === false && store.llm.base_url)) {
+    await fetchModels()
+  }
 }
 
 async function fetchModels() {
+  const provider = store.llm.provider // 发起时的提供商：完成后切走了则丢弃过期结果
   store.llm.modelsState = 'loading'
   store.llm.modelsMsg = ''
   try {
@@ -123,10 +125,11 @@ async function fetchModels() {
       base_url: store.llm.base_url,
       api_key: store.llm.api_key
     })
+    if (store.llm.provider !== provider) return // 已切换到其他提供商，忽略本次结果
     store.llm.models = data.models || []
     if (data.source === 'fallback') {
       store.llm.modelsState = 'fail'
-      store.llm.modelsMsg = `拉取失败（${data.error || '未知错误'}），已显示预置模型，可手动输入`
+      store.llm.modelsMsg = `拉取失败（${data.error || '未知错误'}），可选「自定义」手动输入模型名`
     } else {
       store.llm.modelsState = 'ok'
       if (!store.llm.model && store.llm.models.length) {
@@ -134,6 +137,7 @@ async function fetchModels() {
       }
     }
   } catch (e) {
+    if (store.llm.provider !== provider) return // 已切换到其他提供商，忽略本次失败
     store.llm.modelsState = 'fail'
     store.llm.modelsMsg = e.message || String(e)
   }

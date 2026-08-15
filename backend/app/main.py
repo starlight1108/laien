@@ -137,7 +137,7 @@ async def put_llm_config(req: LLMConfigRequest) -> dict:
 
 @app.post("/api/llm/models")
 async def llm_models(req: LLMModelsRequest) -> dict:
-    """根据用户 Key 从提供商拉取可用模型列表；失败时降级为预置列表并说明。"""
+    """根据用户 Key 从提供商拉取可用模型列表；失败时返回空列表并说明（不回退预置列表）。"""
     base_url, _, api_key = _resolve_llm_config(req.provider, req.base_url or "", "", req.api_key)
     if not base_url:
         return {"models": [], "source": "fallback", "error": "缺少 Base URL"}
@@ -151,11 +151,7 @@ async def llm_models(req: LLMModelsRequest) -> dict:
         error = "连接超时（15s 内未响应），请检查网络或 Base URL"
     except Exception as e:  # noqa: BLE001
         error = str(e) or type(e).__name__
-    fallback = []
-    for p in PROVIDERS:
-        if p["id"] == req.provider:
-            fallback = list(p.get("models", []))
-    return {"models": fallback, "source": "fallback", "error": error}
+    return {"models": [], "source": "fallback", "error": error}
 
 
 def _fetch_models(base_url: str, api_key: str) -> list[str]:
