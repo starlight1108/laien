@@ -19,7 +19,7 @@ from .llm.config_store import load_llm_config, load_provider_config, save_provid
 from .llm.prompts import _GROUNDING_RULES  # noqa: F401  (确保提示词模块可导入)
 from .pipeline.orchestrator import orchestrator
 from .services.importing import ImportError_, normalize_import_item, parse_import_text
-from .storage import get_run_meta, list_cache_runs, list_runs
+from .storage import delete_run, get_run_meta, list_cache_runs, list_runs
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -265,6 +265,26 @@ def get_cache_meta(run_id: str) -> Optional[dict]:
     meta = _json.loads(meta_file.read_text(encoding="utf-8"))
     meta["cache"] = True
     return meta
+
+
+@app.delete("/api/runs/{run_id}")
+async def delete_run_api(run_id: str) -> dict:
+    """删除历史分析记录：SQLite 元数据 + runs 目录全部产物。
+
+    - 缓存演示数据（仓库内置）不可删除，返回 400
+    - 执行中的运行不可删除（后台任务仍在写产物/元数据），返回 400
+    """
+    if get_cache_meta(run_id) is not None:
+        raise HTTPException(status_code=400, detail="缓存演示数据不可删除")
+    meta = get_run_meta(run_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="运行不存在")
+    task = orchestrator._tasks.get(run_id)
+    if task is not None and not task.done():
+        raise HTTPException(status_code=400, detail="运行执行中，无法删除")
+    delete_run(run_id)
+    orchestrator.forget_run(run_id)
+    return {"deleted": run_id}
 
 
 @app.get("/api/runs/{run_id}/events")

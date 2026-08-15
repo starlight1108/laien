@@ -66,6 +66,12 @@
           <span v-if="r.cache" class="badge warn">⚠ 缓存</span>
           <span v-if="r.model" class="small muted">｜{{ r.provider }} / {{ r.model }}</span>
           <span class="small muted" style="margin-left: auto">{{ fmtTime(r.created_at) }}</span>
+          <button
+            v-if="!r.cache"
+            class="del-btn"
+            title="删除该历史记录"
+            @click.stop="delRun(r)"
+          >删除</button>
         </div>
       </div>
     </div>
@@ -75,7 +81,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { store } from '../store'
-import { createRun, listRuns } from '../api'
+import { createRun, deleteRun, listRuns } from '../api'
 import ProviderPanel from '../components/ProviderPanel.vue'
 
 const url = ref('https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684')
@@ -98,6 +104,18 @@ function openRun(r) {
   store.currentRun = r
   store.activeTab = 'progress'
   store.tcTrace = null
+}
+
+async function delRun(r) {
+  const name = r.app_name || r.run_id
+  if (!window.confirm(`确定删除「${name}」的历史记录吗？产物文件将一并清除。`)) return
+  try {
+    await deleteRun(r.run_id)
+    historyRuns.value = historyRuns.value.filter((x) => x.run_id !== r.run_id)
+    if (store.currentRun?.run_id === r.run_id) store.currentRun = null
+  } catch (e) {
+    alert(e.message || String(e))
+  }
 }
 
 function statusText(s) {
@@ -182,5 +200,18 @@ async function start() {
 }
 .run-item:hover {
   border-color: var(--accent);
+}
+.del-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.del-btn:hover {
+  color: var(--red);
+  border-color: var(--red);
 }
 </style>

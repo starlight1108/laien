@@ -5,6 +5,7 @@
 - data/app.db                 —— SQLite 运行元数据（gitignore）
 """
 import json
+import shutil
 import sqlite3
 import uuid
 from datetime import datetime, timezone
@@ -160,6 +161,21 @@ def get_run_meta(run_id: str) -> Optional[dict]:
         meta["stages"] = []
     meta.pop("stages_json", None)
     return meta
+
+
+def delete_run(run_id: str) -> None:
+    """删除运行：SQLite 元数据 + runs 目录下全部产物。
+
+    注意用 settings.data_dir 拼接而非 run_dir()（后者会重建目录）。
+    缓存演示数据（cache 目录）不在此删除。
+    """
+    conn = _connect()
+    conn.execute("DELETE FROM runs WHERE run_id=?", (run_id,))
+    conn.commit()
+    conn.close()
+    d = settings.data_dir / "runs" / run_id
+    if d.exists():
+        shutil.rmtree(d)
 
 
 def list_runs(limit: int = 50) -> list[dict]:

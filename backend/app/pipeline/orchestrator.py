@@ -133,6 +133,7 @@ class Orchestrator:
         self.STAGES = _register_stages()
         self._queues: dict[str, asyncio.Queue] = {}
         self._tasks: dict[str, asyncio.Task] = {}
+        self._ctx: dict[str, RunContext] = {}
 
     # ------------------------------------------------------------------
     # 运行管理
@@ -198,7 +199,8 @@ class Orchestrator:
                 logger.warning("未提供 API Key（非本地模型），语义阶段将降级")
 
         ctx = RunContext(run_id, meta, llm=llm, api_key=api_key)
-        self._ctx: dict[str, RunContext] = {run_id: ctx}
+        # 用 setdefault 而非覆盖整表：并发创建多个运行时互不丢失上下文
+        self._ctx.setdefault(run_id, ctx)
         return meta
 
     def start(self, run_id: str) -> None:
@@ -221,6 +223,14 @@ class Orchestrator:
 
     def get_ctx(self, run_id: str) -> Optional[RunContext]:
         return self._ctx.get(run_id)
+
+    def forget_run(self, run_id: str) -> None:
+        """删除运行后的内存清理：取消未完成任务、移除事件队列与上下文。"""
+        task = self._tasks.pop(run_id, None)
+        if task is not None and not task.done():
+            task.cancel()
+        self._queues.pop(run_id, None)
+        self._ctx.pop(run_id, None)
 
     # ------------------------------------------------------------------
     # 主流程

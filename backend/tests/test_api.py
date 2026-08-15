@@ -301,7 +301,7 @@ def test_llm_config_migrates_flat_format(server, temp_settings):
 # --------------------------------------------------------------------------
 # 创建运行
 # --------------------------------------------------------------------------
-def test_create_run_with_import_text(server):
+def test_create_run_with_import_text(server, temp_settings):
     r = requests.post(
         server + "/api/runs",
         json={"import_text": '[{"id": "1", "title": "t", "content": "c", "rating": 5}]'},
@@ -314,7 +314,7 @@ def test_create_run_with_import_text(server):
     assert meta["status"] == "pending"
 
 
-def test_create_run_with_import_data(server):
+def test_create_run_with_import_data(server, temp_settings):
     data = [{"id": "1", "title": "t", "content": "c", "rating": 4}]
     r = requests.post(server + "/api/runs", json={"import_data": data}, timeout=5)
     assert r.status_code == 200
@@ -338,7 +338,7 @@ def test_create_run_invalid_import_data(server):
     assert "rating" in r.json()["detail"]
 
 
-def test_create_run_with_url(server):
+def test_create_run_with_url(server, temp_settings):
     r = requests.post(
         server + "/api/runs",
         json={"url": "https://apps.apple.com/cn/app/id123", "goal": "订阅"},
@@ -359,7 +359,7 @@ def test_list_runs(server):
     assert "runs" in r.json()
 
 
-def test_list_runs_contains_created(server):
+def test_list_runs_contains_created(server, temp_settings):
     created = requests.post(
         server + "/api/runs",
         json={"import_text": '[{"id": "1", "title": "t", "content": "c", "rating": 3}]'},
@@ -370,7 +370,7 @@ def test_list_runs_contains_created(server):
     assert created["run_id"] in ids
 
 
-def test_get_run(server):
+def test_get_run(server, temp_settings):
     created = requests.post(
         server + "/api/runs",
         json={"import_text": '[{"id": "1", "title": "t", "content": "c", "rating": 3}]'},
@@ -384,6 +384,74 @@ def test_get_run(server):
 def test_get_run_not_found(server):
     r = requests.get(server + "/api/runs/nonexistent_123", timeout=5)
     assert r.status_code == 404
+
+
+# --------------------------------------------------------------------------
+# 删除运行
+# --------------------------------------------------------------------------
+def test_delete_run(server, temp_settings):
+    """删除后元数据与 runs 目录产物一并移除，列表不再包含。"""
+    created = requests.post(
+        server + "/api/runs",
+        json={"import_text": '[{"id": "1", "title": "t", "content": "c", "rating": 3}]'},
+        timeout=5,
+    ).json()
+    run_id = created["run_id"]
+    save_artifact(run_id, "scope", {"summary": "x"})
+    assert (temp_settings.data_dir / "runs" / run_id).exists()
+
+    r = requests.delete(server + f"/api/runs/{run_id}", timeout=5)
+    assert r.status_code == 200
+    assert r.json() == {"deleted": run_id}
+
+    assert requests.get(server + f"/api/runs/{run_id}", timeout=5).status_code == 404
+    assert not (temp_settings.data_dir / "runs" / run_id).exists()
+    ids = [x["run_id"] for x in requests.get(server + "/api/runs", timeout=5).json()["runs"]]
+    assert run_id not in ids
+
+
+def test_delete_run_not_found(server):
+    r = requests.delete(server + "/api/runs/nonexistent_123", timeout=5)
+    assert r.status_code == 404
+
+
+def test_delete_cache_run_rejected(server, temp_settings):
+    """缓存演示数据（仓库内置）不可删除，返回 400。"""
+    run_id = "cache_demo_delete"
+    cache_dir = temp_settings.cache_dir / run_id
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    (cache_dir / "meta.json").write_text(
+        json.dumps({"run_id": run_id, "status": "succeeded", "created_at": "2026-01-01T00:00:00Z"}),
+        encoding="utf-8",
+    )
+    r = requests.delete(server + f"/api/runs/{run_id}", timeout=5)
+    assert r.status_code == 400
+    assert "缓存" in r.json()["detail"]
+    # 文件未被删除
+    assert (cache_dir / "meta.json").exists()
+
+
+def test_delete_running_run_rejected(server, temp_settings):
+    """执行中的运行不可删除（后台任务仍在写产物），返回 400。"""
+    from concurrent.futures import Future
+
+    created = requests.post(
+        server + "/api/runs",
+        json={"import_text": '[{"id": "1", "title": "t", "content": "c", "rating": 3}]'},
+        timeout=5,
+    ).json()
+    run_id = created["run_id"]
+    # 模拟执行中的后台任务（orchestrator.start 已被 mock，这里直接注入）
+    fake_task = Future()
+    orchestrator._tasks[run_id] = fake_task
+    try:
+        r = requests.delete(server + f"/api/runs/{run_id}", timeout=5)
+        assert r.status_code == 400
+        assert "执行中" in r.json()["detail"]
+        # 运行仍可查询，未被删除
+        assert requests.get(server + f"/api/runs/{run_id}", timeout=5).status_code == 200
+    finally:
+        orchestrator._tasks.pop(run_id, None)
 
 
 # --------------------------------------------------------------------------
@@ -402,7 +470,7 @@ def test_get_artifact(server, temp_settings):
     assert r.json() == {"summary": "x", "filters": []}
 
 
-def test_get_artifact_not_found(server):
+def test_get_artifact_not_found(server, temp_settings):
     created = requests.post(
         server + "/api/runs",
         json={"import_text": '[{"id": "1", "title": "t", "content": "c", "rating": 3}]'},
