@@ -6,6 +6,10 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+# 项目根目录（backend/app/config.py 上溯 3 级）。数据目录与静态目录以此为基准，
+# 保证无论从何处启动 uvicorn 都指向同一份数据（仓库根 data/）。
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 
 def _env_bool(name: str, default: bool) -> bool:
     v = os.getenv(name)
@@ -16,10 +20,16 @@ def _env_bool(name: str, default: bool) -> bool:
 
 @dataclass
 class Settings:
-    # ---- 数据目录 ----
-    data_dir: Path = field(default_factory=lambda: Path(os.getenv("DATA_DIR", "data")))
-    cache_dir: Path = field(default_factory=lambda: Path(os.getenv("CACHE_DIR", "data/cache")))
-    db_path: Path = field(default_factory=lambda: Path(os.getenv("DB_PATH", "data/app.db")))
+    # ---- 数据目录（默认以项目根为基准；可用环境变量覆盖）----
+    data_dir: Path = field(
+        default_factory=lambda: Path(os.getenv("DATA_DIR", str(PROJECT_ROOT / "data")))
+    )
+    cache_dir: Path = field(
+        default_factory=lambda: Path(os.getenv("CACHE_DIR", str(PROJECT_ROOT / "data" / "cache")))
+    )
+    db_path: Path = field(
+        default_factory=lambda: Path(os.getenv("DB_PATH", str(PROJECT_ROOT / "data" / "app.db")))
+    )
 
     # ---- LLM 默认值（环境变量兜底，UI 输入优先）----
     llm_base_url: str = field(default_factory=lambda: os.getenv("LLM_BASE_URL", ""))
@@ -42,7 +52,9 @@ class Settings:
     dedup_threshold: float = field(default_factory=lambda: float(os.getenv("DEDUP_THRESHOLD", "0.85")))
 
     # ---- 静态托管 ----
-    static_dir: Path = field(default_factory=lambda: Path(os.getenv("STATIC_DIR", "backend/app/static")))
+    static_dir: Path = field(
+        default_factory=lambda: Path(os.getenv("STATIC_DIR", str(PROJECT_ROOT / "backend" / "app" / "static")))
+    )
 
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)

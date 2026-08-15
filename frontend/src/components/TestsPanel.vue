@@ -9,6 +9,11 @@
           <strong>{{ tc.id }}</strong>
           <span class="badge info">需求 {{ tc.requirement_id }}</span>
           <span class="small muted">关联评论 {{ tc.review_ids?.length || 0 }} 条</span>
+          <button
+            class="ghost small-btn"
+            :disabled="!tc.review_ids?.length"
+            @click="viewReviews(tc)"
+          >查看关联评论</button>
         </div>
         <div class="small" style="margin-top: 6px">
           <strong class="muted">验证问题：</strong>{{ tc.verifies_issue }}
@@ -30,6 +35,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getArtifact } from '../api'
+import { store } from '../store'
 
 const props = defineProps({ runId: { type: String, required: true } })
 const cases = ref(null)
@@ -43,6 +49,11 @@ onMounted(async () => {
   }
   loaded.value = true
 })
+
+function viewReviews(tc) {
+  store.tcTrace = tc
+  store.activeTab = 'tcreviews'
+}
 </script>
 
 <style scoped>
@@ -53,4 +64,6 @@ onMounted(async () => {
   padding: 12px 14px;
   margin-bottom: 10px;
 }
+.small-btn { padding: 3px 10px; font-size: 12px; }
+.small-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 </style>

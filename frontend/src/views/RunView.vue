@@ -39,6 +39,7 @@
     <PrdPanel v-else-if="activeTab === 'prd'" :run-id="runId" />
     <TestsPanel v-else-if="activeTab === 'tests'" :run-id="runId" />
     <TracePanel v-else-if="activeTab === 'trace'" :run-id="runId" />
+    <TcReviewsPanel v-else-if="activeTab === 'tcreviews'" :run-id="runId" />
   </div>
 </template>
 
@@ -55,6 +56,7 @@ import EvidencePanel from '../components/EvidencePanel.vue'
 import PrdPanel from '../components/PrdPanel.vue'
 import TestsPanel from '../components/TestsPanel.vue'
 import TracePanel from '../components/TracePanel.vue'
+import TcReviewsPanel from '../components/TcReviewsPanel.vue'
 
 const runId = computed(() => store.currentRun?.run_id)
 const meta = ref(store.currentRun)

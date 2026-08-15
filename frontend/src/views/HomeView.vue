@@ -51,16 +51,22 @@
       <span v-if="error" class="error-box" style="margin: 0; flex: 1">{{ error }}</span>
     </div>
 
-    <div v-if="cacheRuns.length" class="card">
-      <h2>④ 离线缓存示例（无网 / 无 Key 评审）</h2>
+    <div class="card">
+      <h2>④ 历史分析记录</h2>
       <div class="small muted" style="margin-bottom: 10px">
-        以下为仓库内置缓存运行：评论数据真实采集自 Apple RSS Feed，语义产物为演示用途，不替代联网+Key 的实时分析。
+        点击可重新打开以往的分析运行；标注 ⚠ 缓存 的为仓库内置演示数据。
       </div>
-      <div v-for="r in cacheRuns" :key="r.run_id" class="cache-run" @click="openCache(r)">
-        <strong>{{ r.app_name || '缓存示例' }}</strong>
-        <span class="muted small">#{{ r.run_id }}</span>
-        <span class="badge warn">⚠ 缓存</span>
-        <div class="small muted">{{ r.cache_note }}</div>
+      <div v-if="!historyLoaded" class="empty">加载中…</div>
+      <div v-else-if="!historyRuns.length" class="empty">暂无历史记录</div>
+      <div v-else>
+        <div v-for="r in historyRuns" :key="r.run_id" class="run-item" @click="openRun(r)">
+          <strong>{{ r.app_name || '分析运行' }}</strong>
+          <span class="muted small">#{{ r.run_id }}</span>
+          <span class="badge" :class="statusClass(r.status)">{{ statusText(r.status) }}</span>
+          <span v-if="r.cache" class="badge warn">⚠ 缓存</span>
+          <span v-if="r.model" class="small muted">｜{{ r.provider }} / {{ r.model }}</span>
+          <span class="small muted" style="margin-left: auto">{{ fmtTime(r.created_at) }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -73,20 +79,39 @@ import { createRun, listRuns } from '../api'
 import ProviderPanel from '../components/ProviderPanel.vue'
 
 const url = ref('https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684')
-const cacheRuns = ref([])
+const historyRuns = ref([])
+const historyLoaded = ref(false)
 
 onMounted(async () => {
   try {
     const data = await listRuns()
-    cacheRuns.value = (data.runs || []).filter((r) => r.cache)
+    historyRuns.value = (data.runs || []).sort((a, b) =>
+      (b.created_at || '').localeCompare(a.created_at || '')
+    )
   } catch {
     /* ignore */
   }
+  historyLoaded.value = true
 })
 
-function openCache(r) {
+function openRun(r) {
   store.currentRun = r
   store.activeTab = 'progress'
+  store.tcTrace = null
+}
+
+function statusText(s) {
+  return { pending: '待执行', running: '执行中', succeeded: '已完成', degraded: '部分降级', failed: '失败' }[s] || s || '—'
+}
+function statusClass(s) {
+  return { pending: 'badge info', running: 'badge info', succeeded: 'badge ok', degraded: 'badge warn', failed: 'badge err' }[s] || 'badge info'
+}
+function fmtTime(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 const goal = ref('')
 const source = ref('url')
@@ -143,7 +168,7 @@ async function start() {
 </script>
 
 <style scoped>
-.cache-run {
+.run-item {
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -155,7 +180,7 @@ async function start() {
   gap: 8px;
   flex-wrap: wrap;
 }
-.cache-run:hover {
-  border-color: var(--amber);
+.run-item:hover {
+  border-color: var(--accent);
 }
 </style>

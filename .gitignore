@@ -14,10 +14,14 @@ venv/
 # 运行时数据（缓存示例除外，data/cache 需提交）
 data/runs/
 data/app.db
+# 从 backend/ 目录启动 uvicorn 时产生的运行时数据壳（与根 data/ 同构，均不提交）
+backend/data/
 
 # Node / 前端
 node_modules/
 frontend/dist/
+# 前端构建产物（FastAPI 同源托管的静态目录，可再生成，不入库）
+backend/app/static/
 
 # IDE
 .vscode/

@@ -14,16 +14,19 @@
     </div>
     <div class="row" style="margin-top: 10px">
       <div>
-        <label>模型（填入 Key 后点击「获取模型」拉取）</label>
+        <label>模型（共 {{ modelOptions.length }} 个可选）</label>
+        <select v-model="selectValue">
+          <option value="">选择模型…</option>
+          <option v-for="m in modelOptions" :key="m" :value="m">{{ m }}</option>
+          <option value="__custom__">✏️ 自定义（手动输入）</option>
+        </select>
         <input
+          v-if="selectValue === '__custom__'"
           v-model="store.llm.model"
           type="text"
-          list="model-options"
-          placeholder="选择或输入模型名"
+          placeholder="输入自定义模型名"
+          style="margin-top: 6px"
         />
-        <datalist id="model-options">
-          <option v-for="m in modelOptions" :key="m" :value="m" />
-        </datalist>
         <div class="small muted" style="margin-top: 4px">
           {{ modelHint }}
         </div>
@@ -34,7 +37,7 @@
           v-model="store.llm.api_key"
           type="password"
           autocomplete="off"
-          placeholder="仅用于本次运行，不落盘"
+          placeholder="填写 API Key（自动保存到浏览器本地）"
         />
       </div>
     </div>
@@ -49,13 +52,13 @@
       <span v-else-if="store.llm.modelsState === 'fail'" class="badge err">{{ store.llm.modelsMsg }}</span>
       <span v-if="store.llm.testState === 'ok'" class="badge ok">✓ 连接成功</span>
       <span v-else-if="store.llm.testState === 'fail'" class="badge err">{{ store.llm.testMsg }}</span>
-      <span class="small muted">Key 仅保存在浏览器与后端内存，不会写入磁盘</span>
+      <span class="small muted">Key 已保存到浏览器本地（localStorage），仅本机可见；请勿在公共/共享设备上使用</span>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { store } from '../store'
 import { testLLM, fetchModels as fetchModelsApi } from '../api'
 
@@ -71,11 +74,28 @@ const modelOptions = computed(() => {
 })
 
 const modelHint = computed(() => {
-  if (store.llm.modelsState === 'ok') return '已从提供商拉取模型列表'
-  if (store.llm.modelsState === 'fail') return '自动拉取失败，可手动输入模型名'
+  if (store.llm.modelsState === 'ok') return `已从提供商拉取 ${store.llm.models.length} 个模型，下拉可查看完整列表`
+  if (store.llm.modelsState === 'fail') return '自动拉取失败，可下拉选择或选「自定义」手动输入模型名'
   if (currentProvider.value?.requires_key === false)
     return '本地模型：无需 Key，可直接获取模型'
   return '填写 API Key 后点击「获取模型」拉取可用模型'
+})
+
+// 自定义模式为独立 UI 状态：选中「自定义」后保持输入框显示，不受 model 值影响
+const customMode = ref(false)
+
+// 模型下拉的选中态：当前模型在列表内则选中该项；自定义模式或模型不在列表内则归入「自定义」
+const selectValue = computed({
+  get() {
+    const m = store.llm.model
+    if (customMode.value || (m && !modelOptions.value.includes(m))) return '__custom__'
+    if (m) return m
+    return ''
+  },
+  set(v) {
+    customMode.value = v === '__custom__'
+    store.llm.model = v === '__custom__' ? '' : v
+  }
 })
 
 function onProviderChange() {
