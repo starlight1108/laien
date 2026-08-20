@@ -22,7 +22,11 @@ class EvidenceStage(BaseStage):
         kept = [r for r in cleaned if not r.get("is_duplicate")]
 
         items: list[EvidenceItem] = []
-        for f in findings:
+        for i, f in enumerate(findings):
+            ctx.report_progress(
+                int((i + 1) / max(len(findings), 1) * 80),
+                f"正在评估发现 {f.get('id', '')} 的证据充分性",
+            )
             count = f.get("supporting_count", 0)
             conflicts = f.get("conflicting_review_ids") or []
             if f.get("assumption"):
@@ -71,6 +75,7 @@ class EvidenceStage(BaseStage):
             f"证据不足 {insufficient} 项，存在冲突 {conflicting} 项。"
             f"{'（数据量有限或约束生效，部分结论不确定性较高）' if insufficient else ''}"
         )
+        ctx.report_progress(100, "证据评估完成")
         report = EvidenceReport(
             items=items, data_limitations=limitations, overall=overall
         ).model_dump()

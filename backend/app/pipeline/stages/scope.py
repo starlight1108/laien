@@ -19,9 +19,11 @@ class ScopeStage(BaseStage):
 
     async def execute(self, ctx: RunContext) -> dict:
         meta = ctx.meta
+        ctx.report_progress(10, "正在解析分析目标与约束")
         result: dict = {"scope": ctx.scope_for_goal(ctx.goal())}
 
         if meta.source == "url" and meta.url:
+            ctx.report_progress(30, "正在解析应用链接")
             try:
                 app_id, country = parse_app_url(meta.url)
             except AppStoreError as e:
@@ -30,6 +32,7 @@ class ScopeStage(BaseStage):
             result["app_id"] = app_id
             result["country"] = country
             # 拉取应用元数据（失败不阻塞，如实记录）
+            ctx.report_progress(55, "正在拉取应用元数据")
             try:
                 info = await lookup_app(app_id, country)
                 meta.app_name = info.get("trackName")
@@ -42,6 +45,8 @@ class ScopeStage(BaseStage):
                 result["metadata_error"] = str(e)
             except Exception as e:  # noqa: BLE001
                 result["metadata_error"] = f"{type(e).__name__}: {e}"
+            ctx.report_progress(90, "应用元数据已获取")
 
         ctx.save("scope", result)
+        ctx.report_progress(100, "分析范围已确定")
         return result

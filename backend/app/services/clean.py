@@ -145,8 +145,16 @@ def deduplicate(reviews: list[Review], threshold: float | None = None) -> list[R
     return sorted(reviews, key=lambda r: order[id(r)])
 
 
-def clean_pipeline(raw_reviews: list[RawReview]) -> dict:
-    """完整清洗流程：清洗 -> 语言识别 -> 去重。返回数据 + 报告。"""
+def clean_pipeline(
+    raw_reviews: list[RawReview],
+    on_step=None,
+) -> dict:
+    """完整清洗流程：清洗 -> 语言识别 -> 去重。返回数据 + 报告。
+
+    on_step: 可选同步回调 on_step(percent, message)，用于上报清洗进度（不 await）。
+    """
+    if on_step is not None:
+        on_step(15, f"正在标准化与清洗 {len(raw_reviews)} 条评论")
     reviews = [clean_review(r) for r in raw_reviews]
 
     # 语言识别（仅对 lang 未知的）
@@ -156,11 +164,15 @@ def clean_pipeline(raw_reviews: list[RawReview]) -> dict:
             r.lang = detect_lang(r)
         if r.lang:
             lang_counter[r.lang] += 1
+    if on_step is not None:
+        on_step(55, "正在识别评论语言")
 
     before = len(reviews)
     deduped = deduplicate(reviews)
     dup_count = sum(1 for r in deduped if r.is_duplicate)
     kept = [r for r in deduped if not r.is_duplicate]
+    if on_step is not None:
+        on_step(85, f"正在去重（{before} → 保留 {len(kept)} 条）")
 
     report = {
         "input_count": before,

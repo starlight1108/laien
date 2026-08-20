@@ -286,6 +286,30 @@ async def delete_run_api(run_id: str) -> dict:
     return {"deleted": run_id}
 
 
+@app.post("/api/runs/{run_id}/pause")
+async def pause_run_api(run_id: str) -> dict:
+    """暂停执行中的运行（协作式：在下一个 await 点挂起，可恢复）。"""
+    if get_cache_meta(run_id) is not None:
+        raise HTTPException(status_code=400, detail="缓存演示数据不可暂停")
+    if get_run_meta(run_id) is None:
+        raise HTTPException(status_code=404, detail="运行不存在")
+    if not orchestrator.pause_run(run_id):
+        raise HTTPException(status_code=400, detail="仅执行中的运行可暂停")
+    return {"run_id": run_id, "status": "paused"}
+
+
+@app.post("/api/runs/{run_id}/resume")
+async def resume_run_api(run_id: str) -> dict:
+    """恢复已暂停的运行。"""
+    if get_cache_meta(run_id) is not None:
+        raise HTTPException(status_code=400, detail="缓存演示数据不可恢复")
+    if get_run_meta(run_id) is None:
+        raise HTTPException(status_code=404, detail="运行不存在")
+    if not orchestrator.resume_run(run_id):
+        raise HTTPException(status_code=400, detail="仅暂停中的运行可恢复")
+    return {"run_id": run_id, "status": "running"}
+
+
 @app.get("/api/runs/{run_id}/events")
 async def run_events(run_id: str) -> StreamingResponse:
     """SSE：阶段进度与中间结果事件流。"""

@@ -36,6 +36,8 @@ export const createRun = (payload) =>
 export const getRun = (id) => request(`/api/runs/${id}`)
 export const listRuns = () => request('/api/runs')
 export const deleteRun = (id) => request(`/api/runs/${id}`, { method: 'DELETE' })
+export const pauseRun = (id) => request(`/api/runs/${id}/pause`, { method: 'POST' })
+export const resumeRun = (id) => request(`/api/runs/${id}/resume`, { method: 'POST' })
 export const getArtifact = (id, name) => request(`/api/runs/${id}/artifacts/${name}`)
 export const listArtifacts = (id) => request(`/api/runs/${id}/artifacts`)
 export const testLLM = (payload) =>

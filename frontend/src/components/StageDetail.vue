@@ -7,6 +7,13 @@
         <span class="badge" :class="badgeClass(s.status)">{{ stateText(s.status) }}</span>
         <span class="small muted" v-if="s.finished_at">耗时 {{ duration(s) }}s</span>
       </div>
+      <div v-if="s.progress > 0 || s.status === 'running'" class="detail-progress">
+        <div class="bar-fill" :style="{ width: (s.progress || 0) + '%' }"></div>
+        <span class="small muted">{{ s.progress || 0 }}%</span>
+      </div>
+      <div v-if="s.message" class="small" style="margin-top: 4px; color: var(--accent)">
+        {{ s.message }}
+      </div>
       <div v-if="s.error" class="error-box">{{ s.error }}</div>
       <div v-if="s.revisions?.length" class="small" style="margin-top: 4px">
         <span class="badge warn">修订</span>
@@ -40,6 +47,20 @@ function summaryText(s) {
 </script>
 
 <style scoped>
+.detail-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.detail-progress .bar-fill {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 1px solid var(--border);
+  transition: width 0.3s ease;
+}
 .summary {
   background: var(--panel-2);
   border: 1px solid var(--border);

@@ -35,11 +35,13 @@ python backend/scripts/generate_cache.py --source <run_id> --limit 300
 
 ## 前后端契约
 
-- **API**：`GET /api/providers`、`GET/PUT /api/llm/config`（模型配置本地持久化）、`POST /api/runs`（创建）、`GET /api/runs/{id}`、`GET /api/runs`、`GET /api/runs/{id}/artifacts/{name}`、`POST /api/llm/test`、`POST /api/llm/models`、`GET /api/runs/{id}/events`（SSE）。
+- **API**：`GET /api/providers`、`GET/PUT /api/llm/config`（模型配置本地持久化）、`POST /api/runs`（创建）、`GET /api/runs/{id}`、`GET /api/runs`、`GET /api/runs/{id}/artifacts/{name}`、`POST /api/llm/test`、`POST /api/llm/models`、`POST /api/runs/{id}/pause`、`POST /api/runs/{id}/resume`、`GET /api/runs/{id}/events`（SSE）。
 - **SSE 事件**（`orchestrator.py` 发布）：
-  - 阶段事件 = `StageResult` 序列化：含 `stage` / `label` / `status` / `summary` / `artifacts` / `revisions` 等字段（**没有** `phase`/`progress`/`percent` 字段）。
-  - 运行事件：`{"type":"run_start",...}`（前端未处理）、`{"type":"run_end","status":...}`（前端据此更新状态，之后流结束）。
-- **状态值**：运行级 `pending/running/succeeded/failed/degraded`；阶段级另有 `revised/skipped`。
+  - 阶段事件 = `StageResult` 序列化：含 `stage` / `label` / `status` / `summary` / `artifacts` / `revisions` 等字段（**没有** `phase`/`percent` 字段）。
+  - 阶段内子进度：`StageResult` 含 `progress`(0-100) / `message`(当前子步骤) / `substeps` 字段，由阶段内 `ctx.report_progress()` 上报；**仅广播 SSE 不落盘**（`_publish_progress`），终态由 `_update_stage` 落盘时收敛 `progress=100`。前端 `ProgressPanel` 据此渲染整体/阶段进度条与实时耗时。
+  - 运行事件：`{"type":"run_start",...}`（前端未处理）、`{"type":"run_end","status":...}`（前端据此更新状态，之后流结束）、`{"type":"run_paused"/"run_resumed",...}`（暂停/恢复，前端据此更新状态）。
+- **状态值**：运行级 `pending/running/paused/succeeded/failed/degraded`；阶段级另有 `revised/skipped`。
+- **暂停/恢复**：协作式暂停（`RunContext.pause_event` + `ensure_running()`），在 `llm_call` 前、阶段边界、`fetch_reviews` 每页前挂起；`pause_run`/`resume_run` 更新状态并广播。暂停中的运行不可删除（任务未完成）。
 - **产物命名**：`scope`、`raw_reviews`、`cleaned_reviews`、`clean_report`、`themes`、`findings`、`evidence_report`、`prd`、`test_cases`、`traceability_report`、`import_data`。`validate` 阶段会**修订并重写** findings/prd/test_cases。
 - **创建运行**：`POST /api/runs`（body 含 `url/goal/provider/model/base_url/api_key/import_text`）→ 再 `GET` 连 SSE。EventSource 只能 GET，不要把两者合并成单个 POST 流。
 

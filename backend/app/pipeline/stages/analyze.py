@@ -133,22 +133,55 @@ class AnalyzeStage(BaseStage):
         # ---------- 1) 批次主题发现 ----------
         batch_size = settings.llm_batch_size
         batches = [kept[i : i + batch_size] for i in range(0, len(kept), batch_size)]
+        n_batches = len(batches)
         all_themes: list[dict] = []
         stats_json = json.dumps(stats, ensure_ascii=False)
+
+        # 子步骤清单：每个批次 + 后续关键步骤，前端据此展示批次级进度
+        substeps: list[dict] = [
+            {"label": f"批次 {i + 1} 主题发现", "status": "pending"}
+            for i in range(n_batches)
+        ]
+        substeps += [
+            {"label": "主题整合", "status": "pending"},
+            {"label": "模型发现生成", "status": "pending"},
+            {"label": "确定性统计发现", "status": "pending"},
+            {"label": "证据复核", "status": "pending"},
+        ]
+        IDX_MERGE = n_batches
+        IDX_FINDINGS = n_batches + 1
+        IDX_STAT = n_batches + 2
+        IDX_REVIEW = n_batches + 3
+        ctx.report_progress(0, "准备分析", substeps)
+
         for idx, batch in enumerate(batches):
+            substeps[idx]["status"] = "running"
+            ctx.report_progress(
+                int(idx / max(n_batches, 1) * 40),
+                f"正在分析批次 {idx + 1}/{n_batches}（{len(batch)} 条评论）",
+                substeps,
+            )
             user = ANALYZE_USER_TEMPLATE.format(
                 goal=goal,
                 stats=stats_json,
                 batch_index=idx + 1,
-                batch_count=len(batches),
+                batch_count=n_batches,
                 batch_size=len(batch),
                 reviews_json=json.dumps(_compact(batch), ensure_ascii=False),
             )
             data = await ctx.llm_call(ANALYZE_SYSTEM, user, schema=THEMES_SCHEMA)
             all_themes.extend(data.get("themes", []) or [])
+            substeps[idx]["status"] = "succeeded"
+            ctx.report_progress(
+                int((idx + 1) / max(n_batches, 1) * 40),
+                f"批次 {idx + 1} 完成",
+                substeps,
+            )
 
         # ---------- 2) 多批主题整合 ----------
-        if len(batches) > 1 and all_themes:
+        if n_batches > 1 and all_themes:
+            substeps[IDX_MERGE]["status"] = "running"
+            ctx.report_progress(45, "正在整合多批主题聚类结果", substeps)
             user = (
                 "【分析目标】\n" + goal
                 + "\n\n【各批次主题聚类结果】\n"
@@ -157,8 +190,10 @@ class AnalyzeStage(BaseStage):
             )
             data = await ctx.llm_call(MERGE_THEMES_SYSTEM, user, schema=THEMES_SCHEMA)
             all_themes = data.get("themes", []) or []
+            substeps[IDX_MERGE]["status"] = "succeeded"
 
         # ---------- 3) 校验主题引用的 review_id ----------
+        ctx.report_progress(55, "正在校验主题引用的评论", substeps)
         valid_ids = {r["review_id"] for r in kept}
         for t in all_themes:
             t["review_ids"] = [rid for rid in t.get("review_ids", []) if rid in valid_ids]
@@ -170,6 +205,8 @@ class AnalyzeStage(BaseStage):
         # ---------- 4) 模型发现生成 ----------
         model_findings: list[dict] = []
         if all_themes:
+            substeps[IDX_FINDINGS]["status"] = "running"
+            ctx.report_progress(65, "正在基于主题生成模型发现", substeps)
             # 为每个主题收集代表评论（控制 token）
             theme_reviews: dict[str, list[dict]] = {}
             for t in all_themes:
@@ -191,11 +228,17 @@ class AnalyzeStage(BaseStage):
             for i, f in enumerate(model_findings, 1):
                 f["id"] = f"F-{i:02d}"
                 f["source"] = "analyze_stage"
+            substeps[IDX_FINDINGS]["status"] = "succeeded"
 
         # ---------- 5) 确定性统计发现（代码生成） ----------
+        substeps[IDX_STAT]["status"] = "running"
+        ctx.report_progress(85, "正在生成确定性统计发现", substeps)
         stat_findings = self._stat_findings(kept, stats, valid_ids, len(model_findings))
+        substeps[IDX_STAT]["status"] = "succeeded"
 
         # ---------- 6) 复核：ID 真实性 + supporting_count 一致性 ----------
+        substeps[IDX_REVIEW]["status"] = "running"
+        ctx.report_progress(92, "正在复核证据引用与数量一致性", substeps)
         revisions: list[str] = []
         findings = stat_findings + model_findings
         for f in findings:
@@ -217,6 +260,8 @@ class AnalyzeStage(BaseStage):
         for f in stat_findings:
             f["assumption"] = False
 
+        substeps[IDX_REVIEW]["status"] = "succeeded"
+        ctx.report_progress(100, f"分析完成：{len(findings)} 项发现", substeps)
         ctx.save("findings", findings)
         self.revisions = revisions
         return {

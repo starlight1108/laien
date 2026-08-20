@@ -60,11 +60,13 @@ class TestsStage(BaseStage):
 
         cleaned = ctx.load("cleaned_reviews") or []
         kept = [r for r in cleaned if not r.get("is_duplicate")]
+        ctx.report_progress(30, "正在基于 PRD 生成测试用例")
         user = TESTS_USER_TEMPLATE.format(
             prd_json=json.dumps(prd, ensure_ascii=False),
             reviews_json=json.dumps(kept[:500], ensure_ascii=False, default=str),
         )
         data = await ctx.llm_call(TESTS_SYSTEM, user, schema=TESTS_SCHEMA)
+        ctx.report_progress(70, "LLM 生成完成，正在校验用例引用")
 
         # ---- 确定性校验 ----
         valid_req_ids = {r["id"] for r in requirements}
@@ -99,4 +101,5 @@ class TestsStage(BaseStage):
 
         ctx.save("test_cases", kept_cases)
         self.revisions = revisions
+        ctx.report_progress(100, f"测试用例生成完成：{len(kept_cases)} 条")
         return {"test_cases_count": len(kept_cases), "revisions": revisions}

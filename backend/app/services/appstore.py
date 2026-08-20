@@ -104,9 +104,14 @@ async def fetch_reviews(
     max_pages: int | None = None,
     interval: float | None = None,
     client: Optional[httpx.AsyncClient] = None,
+    on_page=None,
+    pause_event=None,
 ) -> dict:
     """通过 Apple 官方 RSS Review Feed 分页采集评论。
 
+    on_page: 可选同步回调 on_page(page, max_pages, collected)，每抓完一页调用，
+             用于上报采集进度（不 await）。
+    pause_event: 可选 asyncio.Event，每页前 await 检查（协作式暂停）。
     返回: {"reviews": [RawReview...], "errors": [...], "pages_fetched": int,
            "total": int, "limitations": [...]}
     """
@@ -119,6 +124,8 @@ async def fetch_reviews(
     c = client or httpx.AsyncClient(timeout=settings.collect_timeout)
     try:
         for page in range(1, max_pages + 1):
+            if pause_event is not None:
+                await pause_event.wait()  # 暂停检查（暂停时挂起）
             # 注意：page 必须作为路径参数（?page=N 会被忽略，返回同一批数据）
             url = (
                 f"https://itunes.apple.com/{country}/rss/customerreviews/"
@@ -145,6 +152,8 @@ async def fetch_reviews(
                 if r.rating:
                     reviews.append(r)
             pages_fetched += 1
+            if on_page is not None:
+                on_page(page, max_pages, len(reviews))
             if len(entries) < 50:
                 break
             await asyncio.sleep(interval)

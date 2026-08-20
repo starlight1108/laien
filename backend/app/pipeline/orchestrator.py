@@ -42,12 +42,40 @@ class RunContext:
         meta: RunMeta,
         llm: Optional[LLMClient] = None,
         api_key: str = "",
+        progress_cb=None,
     ) -> None:
         self.run_id = run_id
         self.meta = meta
         self.llm = llm
         self.api_key = api_key  # 仅内存，禁止落盘
         self._artifacts: dict[str, Any] = {}
+        # 进度上报回调（由编排器注入；独立测试/无回调时 no-op）
+        self.progress_cb = progress_cb
+        self.current_stage_index = -1
+        # 协作式暂停：pause_event 未 set 时，await 点挂起；恢复后继续
+        self.pause_event = asyncio.Event()
+        self.pause_event.set()
+
+    def report_progress(
+        self,
+        percent: int,
+        message: str = "",
+        substeps: Optional[list[dict]] = None,
+    ) -> None:
+        """上报当前阶段子进度（仅广播 SSE，不落盘，避免高频写库）。"""
+        if self.progress_cb is None:
+            return
+        self.progress_cb(percent, message, substeps)
+
+    async def ensure_running(self) -> None:
+        """暂停检查：暂停时挂起当前阶段，恢复后继续（协作式暂停）。"""
+        await self.pause_event.wait()
+
+    def pause(self) -> None:
+        self.pause_event.clear()
+
+    def resume(self) -> None:
+        self.pause_event.set()
 
     def save(self, name: str, data: Any) -> None:
         save_artifact(self.run_id, name, data)
@@ -67,9 +95,13 @@ class RunContext:
 
     async def llm_call(self, system: str, user: str, schema: Optional[dict] = None,
                        temperature: Optional[float] = None) -> dict:
-        """在线程池中执行 LLM 调用，避免同步网络阻塞事件循环。"""
+        """在线程池中执行 LLM 调用，避免同步网络阻塞事件循环。
+
+        调用前检查暂停信号：暂停时挂起，恢复后继续（协作式暂停）。
+        """
         if self.llm is None:
             raise StageError("未配置 LLM（缺少模型或 API Key）", degraded=True)
+        await self.ensure_running()
         return await asyncio.to_thread(
             self.llm.complete_json, system, user, schema, temperature
         )
@@ -232,6 +264,40 @@ class Orchestrator:
         self._queues.pop(run_id, None)
         self._ctx.pop(run_id, None)
 
+    def pause_run(self, run_id: str) -> bool:
+        """暂停运行（协作式：在下一个 await 点挂起，可恢复）。"""
+        ctx = self._ctx.get(run_id)
+        if ctx is None or ctx.meta.status != "running":
+            return False
+        ctx.pause()
+        ctx.meta.status = "paused"
+        save_run_meta(ctx.meta.model_dump(mode="json"))
+        update_run_status(run_id, "paused")
+        asyncio.get_event_loop().create_task(
+            self.publish(
+                run_id,
+                {"type": "run_paused", "run_id": run_id, "status": "paused"},
+            )
+        )
+        return True
+
+    def resume_run(self, run_id: str) -> bool:
+        """恢复已暂停的运行。"""
+        ctx = self._ctx.get(run_id)
+        if ctx is None or ctx.meta.status != "paused":
+            return False
+        ctx.resume()
+        ctx.meta.status = "running"
+        save_run_meta(ctx.meta.model_dump(mode="json"))
+        update_run_status(run_id, "running")
+        asyncio.get_event_loop().create_task(
+            self.publish(
+                run_id,
+                {"type": "run_resumed", "run_id": run_id, "status": "running"},
+            )
+        )
+        return True
+
     # ------------------------------------------------------------------
     # 主流程
     # ------------------------------------------------------------------
@@ -239,11 +305,16 @@ class Orchestrator:
         ctx = self._ctx.get(run_id)
         if ctx is None:
             return
+        ctx.meta.status = "running"
         update_run_status(run_id, "running")
         await self.publish(run_id, {"type": "run_start", "run_id": run_id})
+        # 注入进度上报回调（仅广播，不落盘）
+        ctx.progress_cb = lambda p, m, s: self._publish_progress(ctx, p, m, s)
 
         for i, stage_cls in enumerate(self.STAGES):
+            await ctx.ensure_running()  # 阶段边界暂停检查（暂停时挂起）
             stage = stage_cls()
+            ctx.current_stage_index = i
             result = StageResult(stage=stage.name, label=stage.label)
             result.status = "running"
             result.started_at = datetime.now(timezone.utc)
@@ -251,6 +322,7 @@ class Orchestrator:
             try:
                 summary = await stage.execute(ctx)
                 result.status = "succeeded"
+                result.progress = 100
                 result.summary = summary or {}
                 result.artifacts = self._list_artifacts(ctx)
                 if getattr(stage, "revisions", None):
@@ -288,6 +360,30 @@ class Orchestrator:
             meta.stages.append(StageResult(stage="", label=""))
         meta.stages[index] = result
         save_run_meta(meta.model_dump(mode="json"))
+        asyncio.get_event_loop().create_task(
+            self.publish(run_id=ctx.run_id, event=result.model_dump(mode="json"))
+        )
+
+    def _publish_progress(
+        self,
+        ctx: RunContext,
+        percent: int,
+        message: str = "",
+        substeps: Optional[list[dict]] = None,
+    ) -> None:
+        """阶段内子进度：仅更新内存中的 StageResult 并广播 SSE，不落盘。
+
+        高频上报（如逐页采集、逐批次 LLM）避免反复写 SQLite。
+        """
+        idx = ctx.current_stage_index
+        if idx < 0 or idx >= len(ctx.meta.stages):
+            return
+        result = ctx.meta.stages[idx]
+        result.progress = max(0, min(100, int(percent)))
+        if message:
+            result.message = message
+        if substeps is not None:
+            result.substeps = substeps
         asyncio.get_event_loop().create_task(
             self.publish(run_id=ctx.run_id, event=result.model_dump(mode="json"))
         )

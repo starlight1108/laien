@@ -119,10 +119,10 @@ async function delRun(r) {
 }
 
 function statusText(s) {
-  return { pending: '待执行', running: '执行中', succeeded: '已完成', degraded: '部分降级', failed: '失败' }[s] || s || '—'
+  return { pending: '待执行', running: '执行中', paused: '已暂停', succeeded: '已完成', degraded: '部分降级', failed: '失败' }[s] || s || '—'
 }
 function statusClass(s) {
-  return { pending: 'badge info', running: 'badge info', succeeded: 'badge ok', degraded: 'badge warn', failed: 'badge err' }[s] || 'badge info'
+  return { pending: 'badge info', running: 'badge info', paused: 'badge warn', succeeded: 'badge ok', degraded: 'badge warn', failed: 'badge err' }[s] || 'badge info'
 }
 function fmtTime(iso) {
   if (!iso) return ''

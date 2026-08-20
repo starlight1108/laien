@@ -54,6 +54,12 @@ class StageResult(BaseModel):
     summary: dict[str, Any] = Field(default_factory=dict)
     artifacts: list[str] = Field(default_factory=list)
     revisions: list[str] = Field(default_factory=list)
+    # 阶段内子进度（0-100，实时广播；终态落盘时收敛为 100）
+    progress: int = 0
+    # 当前子步骤描述，如"正在分析批次 2/4"
+    message: str = ""
+    # 子步骤清单：[{label, status}]，status 取值 pending/running/succeeded/failed
+    substeps: list[dict[str, Any]] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------------

@@ -15,7 +15,20 @@
             <span v-if="meta?.model">｜模型：{{ meta?.provider }} / {{ meta?.model }}</span>
           </div>
         </div>
-        <span class="badge" :class="statusClass">{{ statusText }}</span>
+        <div style="display: flex; align-items: center; gap: 8px">
+          <span class="badge" :class="statusClass">{{ statusText }}</span>
+          <button
+            v-if="canPause"
+            class="ghost"
+            @click="onPause"
+            title="暂停后将在下一个步骤挂起，可随时继续"
+          >⏸ 暂停</button>
+          <button
+            v-else-if="canResume"
+            class="ghost"
+            @click="onResume"
+          >▶ 继续</button>
+        </div>
       </div>
     </div>
 
@@ -46,7 +59,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { store } from '../store'
-import { getRun, streamRun } from '../api'
+import { getRun, streamRun, pauseRun, resumeRun } from '../api'
 import ProgressPanel from '../components/ProgressPanel.vue'
 import StageDetail from '../components/StageDetail.vue'
 import ReviewsPanel from '../components/ReviewsPanel.vue'
@@ -88,12 +101,34 @@ const tabs = [
 
 const statusText = computed(() => {
   const s = meta.value?.status
-  return { pending: '待执行', running: '执行中', succeeded: '已完成', degraded: '已完成(部分降级)', failed: '失败' }[s] || s || '—'
+  return { pending: '待执行', running: '执行中', paused: '已暂停', succeeded: '已完成', degraded: '已完成(部分降级)', failed: '失败' }[s] || s || '—'
 })
 const statusClass = computed(() => {
   const s = meta.value?.status
-  return { pending: 'badge info', running: 'badge info', succeeded: 'badge ok', degraded: 'badge warn', failed: 'badge err' }[s] || 'badge info'
+  return { pending: 'badge info', running: 'badge info', paused: 'badge warn', succeeded: 'badge ok', degraded: 'badge warn', failed: 'badge err' }[s] || 'badge info'
 })
+
+// 暂停/继续：仅实时运行可操作（缓存演示数据已完结，不可暂停）
+const canPause = computed(() => meta.value?.status === 'running' && !meta.value?.cache)
+const canResume = computed(() => meta.value?.status === 'paused' && !meta.value?.cache)
+
+async function onPause() {
+  try {
+    await pauseRun(runId.value)
+    meta.value.status = 'paused'
+  } catch (e) {
+    alert(`暂停失败：${e.message}`)
+  }
+}
+
+async function onResume() {
+  try {
+    await resumeRun(runId.value)
+    meta.value.status = 'running'
+  } catch (e) {
+    alert(`继续失败：${e.message}`)
+  }
+}
 
 function switchTab(id) {
   store.activeTab = id
@@ -118,12 +153,26 @@ onMounted(async () => {
     } else if (event.type === 'run_end') {
       meta.value.status = event.status
       stopPolling()
+    } else if (event.type === 'run_paused') {
+      meta.value.status = 'paused'
+    } else if (event.type === 'run_resumed') {
+      meta.value.status = 'running'
     }
   })
   // 轮询兜底：SSE 断开时保障状态收敛；进入终态后停止，避免无谓请求
+  // 注意：progress/message/substeps 仅走 SSE 不落盘，轮询结果需与内存中的
+  // 实时进度合并，否则每 3s 会把阶段内进度清空（只剩落盘的运行时间）。
   timer = setInterval(async () => {
     try {
       const m = await getRun(runId.value)
+      const prev = meta.value?.stages || []
+      m.stages = (m.stages || []).map((s) => {
+        const p = prev.find((x) => x.stage === s.stage)
+        if (p && (p.progress > 0 || p.message || p.substeps?.length)) {
+          return { ...s, progress: p.progress, message: p.message, substeps: p.substeps }
+        }
+        return s
+      })
       meta.value = m
       if (TERMINAL_STATUSES.has(m?.status)) stopPolling()
     } catch { /* ignore */ }

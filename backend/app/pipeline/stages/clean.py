@@ -13,7 +13,11 @@ class CleanStage(BaseStage):
     async def execute(self, ctx: RunContext) -> dict:
         raw = ctx.load("raw_reviews") or []
         raw_objs = [RawReview(**d) for d in raw]
-        out = clean_pipeline(raw_objs)
+        out = clean_pipeline(
+            raw_objs,
+            on_step=lambda p, m: ctx.report_progress(p, m),
+        )
         ctx.save("cleaned_reviews", [r.model_dump() for r in out["reviews"]])
         ctx.save("clean_report", out["report"])
+        ctx.report_progress(100, f"清洗完成：保留 {out['report']['kept_count']} 条")
         return out["report"]

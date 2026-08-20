@@ -31,6 +31,7 @@ class ValidateStage(BaseStage):
         revisions: list[str] = []
 
         # ---- 1) 发现：证据引用真实 + 数量一致 ----
+        ctx.report_progress(15, "正在校验发现的证据引用")
         for f in findings:
             issues = []
             fake_ids = [rid for rid in f.get("evidence_review_ids", []) if rid not in valid_review_ids]
@@ -52,6 +53,7 @@ class ValidateStage(BaseStage):
             )
 
         # ---- 2) 需求：引用发现与评论 ----
+        ctx.report_progress(40, "正在校验需求的引用")
         finding_ids = {f["id"] for f in findings}
         req_finding_used: set[str] = set()
         for r in requirements:
@@ -77,6 +79,7 @@ class ValidateStage(BaseStage):
             )
 
         # ---- 3) 测试用例：引用需求与评论 ----
+        ctx.report_progress(65, "正在校验测试用例的引用")
         req_ids = {r["id"] for r in requirements}
         covered_reqs: set[str] = set()
         for tc in test_cases:
@@ -98,6 +101,7 @@ class ValidateStage(BaseStage):
             )
 
         # ---- 4) 覆盖性检查 ----
+        ctx.report_progress(85, "正在检查需求与用例覆盖性")
         uncovered_findings = [f["id"] for f in findings if f["id"] not in req_finding_used]
         if uncovered_findings:
             checks.append(
@@ -118,6 +122,7 @@ class ValidateStage(BaseStage):
             )
 
         # ---- 5) 汇总 ----
+        ctx.report_progress(100, "可追溯性验证完成")
         summary = {"total": len(checks), "ok": 0, "issues": 0}
         for c in checks:
             summary["ok" if c.ok else "issues"] += 1

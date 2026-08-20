@@ -82,11 +82,13 @@ class PRDStage(BaseStage):
             raise StageError("无发现数据，无法生成 PRD（请检查阶段 4）")
 
         goal = ctx.goal() or "整体用户问题"
+        ctx.report_progress(25, "正在基于发现生成需求与版本计划")
         user = PRD_USER_TEMPLATE.format(
             goal=goal,
             findings_json=json.dumps(findings, ensure_ascii=False),
         )
         data = await ctx.llm_call(PRD_SYSTEM, user, schema=PRD_SCHEMA)
+        ctx.report_progress(70, "LLM 生成完成，正在校验引用真实性")
 
         # ---- 确定性校验 ----
         valid_finding_ids = {f["id"] for f in findings}
@@ -121,6 +123,7 @@ class PRDStage(BaseStage):
         }
         ctx.save("prd", prd)
         self.revisions = revisions
+        ctx.report_progress(100, f"PRD 生成完成：{len(requirements)} 条需求")
         return {
             "requirements_count": len(requirements),
             "versions": [v.get("version") for v in plan_versions],
