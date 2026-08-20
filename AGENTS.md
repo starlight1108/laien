@@ -10,14 +10,14 @@
 # 后端测试（asyncio_mode=auto，testpaths=tests）
 cd backend && pytest
 
-# 启动后端（前端构建产物由 FastAPI 同源托管在 http://127.0.0.1:8000）
+# 启动后端（仅提供 API，端口 8000）
 cd backend && uvicorn app.main:app --app-dir . --port 8000
 
 # 前端开发（5173 端口，/api 代理到 8000；自带 HMR 热重载，改 frontend/src/* 即时生效，无需 build）
 # 需同时启动后端（8000），浏览器访问 http://127.0.0.1:5173
 cd frontend && npm run dev
 
-# 前端构建 —— 产物输出到 backend/app/static（已 gitignore，不入库），仅本地交付/运行时执行
+# 前端构建 —— 产物输出到 backend/app/static（已 gitignore，不入库），仅部署时执行
 cd frontend && npm run build
 
 # 重新生成离线缓存示例（需先联网真实采集一次）
@@ -28,8 +28,8 @@ python backend/scripts/generate_cache.py --source <run_id> --limit 300
 
 ## 架构速览
 
-- **后端**（`backend/app/`）：`main.py` 为唯一入口（REST + SSE + 静态托管）；`config.py` 环境配置；`schemas.py` Pydantic 模型；`storage.py` JSON 产物落盘 + SQLite 元数据 + 缓存回退；`pipeline/orchestrator.py` 负责调度；`llm/` 为 OpenAI 兼容客户端与提示词；`services/` 为采集/清洗/统计/导入。
-- **流水线**：`orchestrator.py::_register_stages()` 实际注册 **8 个阶段**（scope→collect→clean→analyze→evidence→prd→tests→validate），文档与 UI 文案称"10 阶段"。**不要在前端硬编码阶段数量/名称**，按后端返回的 `stages` 数组渲染。每阶段继承 `BaseStage`，产物通过 `RunContext.save(name, data)` 即时落盘。
+- **后端**（`backend/app/`）：`main.py` 为唯一入口（REST + SSE）；`config.py` 环境配置；`schemas.py` Pydantic 模型；`storage.py` JSON 产物落盘 + SQLite 元数据 + 缓存回退；`pipeline/orchestrator.py` 负责调度；`llm/` 为 OpenAI 兼容客户端与提示词；`services/` 为采集/清洗/统计/导入。
+- **流水线**：`orchestrator.py::_register_stages()` 注册 **8 个执行阶段**（scope→collect→clean→analyze→evidence→prd→tests→validate）；需求文档的"10 阶段"= 8 个执行阶段 + 2 个 UI 展示环节（执行进度 / 交付物展示，由前端承担）。**不要在前端硬编码阶段数量/名称**，按后端返回的 `stages` 数组渲染。每阶段继承 `BaseStage`，产物通过 `RunContext.save(name, data)` 即时落盘。
 - **LLM 调用**：`RunContext.llm_call()` 用 `asyncio.to_thread` 跑同步 `LLMClient.complete_json`，避免阻塞事件循环；含重试/降级/JSON Schema 校验。
 - **前端**（`frontend/src/`）：Vue 3 组合式 API（`<script setup>`），**无 router / Pinia / Vuex / axios**。页面切换靠 `store.js` 的 `reactive` 单例（`currentRun` 决定 HomeView/RunView）+ `activeTab` tab 切换；网络用原生 `fetch` 与 `EventSource`。
 
@@ -45,8 +45,8 @@ python backend/scripts/generate_cache.py --source <run_id> --limit 300
 
 ## 项目特定约定与坑
 
-- **前端开发用 dev server 热重载，交付时才 `npm run build`**：开发调试应启动 `cd frontend && npm run dev`（5173，`/api` 代理到 8000，HMR 即时生效），**不要**每次改动都构建；`backend/app/static` 为构建产物（已 gitignore，不入库），仅在本地运行/交付前执行 `npm run build`（否则刷新看到的是旧产物）。无前端测试与 lint，改动后用 build 验证一次。
-- **Key 安全**：`api_key` 后端只存运行内存（`RunContext.api_key`），**禁止**写入日志、缓存、artifact、注释、`.env` 提交；用户模型配置（含 Key）由后端持久化到 `data/llm_config.json`（已 gitignore，POSIX 下权限 600），前端通过 `GET/PUT /api/llm/config` 读写。注意 README 称"经请求头发送"，实际实现在 POST JSON body 中传输（文档偏差，改代码时不要依赖 README 说法）。
+- **前端开发用 dev server 热重载，交付时才 `npm run build`**：开发调试应启动 `cd frontend && npm run dev`（5173，`/api` 代理到 8000，HMR 即时生效），**不要**每次改动都构建；`backend/app/static` 为构建产物（已 gitignore，不入库），仅在部署前执行 `npm run build`。无前端测试与 lint，改动后用 build 验证一次。
+- **Key 安全**：`api_key` 后端只存运行内存（`RunContext.api_key`），**禁止**写入日志、缓存、artifact、注释、`.env` 提交；用户模型配置（含 Key）由后端持久化到 `data/llm_config.json`（已 gitignore，POSIX 下权限 600），前端通过 `GET/PUT /api/llm/config` 读写。Key 在 POST JSON body 中传输（README 同此表述）。
 - **离线缓存运行**：`meta.cache === true` 时前端**完全跳过 SSE 与轮询**（HomeView 第④卡片「历史分析记录」、RunView 顶部警告横幅、`listRuns` 返回合并列表都据此区分）。新增"实时刷新"逻辑必须跳过缓存运行。
 - **数据目录以项目根为基准**：`config.py` 用 `PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent`，`data_dir/cache_dir/db_path/static_dir` 默认均相对项目根 —— 无论从 `backend/` 还是根目录启动 uvicorn 都读写仓库根 `data/`（根 `data/app.db` 现有 7 条历史运行）。可用 `DATA_DIR/CACHE_DIR/DB_PATH/STATIC_DIR` 环境变量覆盖；不要改成 CWD 相对，否则从 `backend/` 启动会读到空的 `backend/data`。
 - **历史分析记录**：HomeView 第④卡片用 `GET /api/runs`（DB 运行 + 缓存运行合并），前端按 `created_at` 倒序展示状态/模型/时间，点击 `openRun(r)` 设 `store.currentRun` 重开；重开已完成的历史运行走 RunView 的 SSE+轮询兜底。
@@ -61,5 +61,5 @@ python backend/scripts/generate_cache.py --source <run_id> --limit 300
 
 ## 文档偏差（改代码时留意）
 
-- 声称"10 阶段"，实现是 8 阶段。
-- README 说 Key"经请求头发送"，实现是 POST body。
+- 需求文档/设计方案仍称"10 阶段"，已统一口径：8 个执行阶段 + 2 个 UI 展示环节（AGENTS.md/README 同此表述）。
+- README 说 Key 经 POST body 传输，与实现一致（此前"经请求头发送"的说法已修正）。

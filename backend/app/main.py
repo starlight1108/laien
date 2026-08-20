@@ -9,8 +9,7 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from .config import settings
@@ -325,19 +324,3 @@ async def list_artifact_names(run_id: str) -> dict:
     return {"artifacts": list_artifacts(run_id)}
 
 
-# --------------------------------------------------------------------------
-# 静态托管（Vue 构建产物）
-# --------------------------------------------------------------------------
-STATIC_DIR = Path(__file__).parent / "static"
-if STATIC_DIR.exists():
-    app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
-else:
-
-    @app.get("/")
-    async def index() -> dict:
-        return {
-            "message": "App Review Insights API",
-            "hint": "前端未构建（backend/app/static 不存在）。"
-            "进入 frontend/ 执行 npm install && npm run build 后重启。",
-            "docs": "/docs",
-        }

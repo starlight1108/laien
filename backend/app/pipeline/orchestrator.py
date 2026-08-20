@@ -1,4 +1,4 @@
-"""流水线编排器：10 阶段状态机 + 后台执行 + SSE 事件广播 + 断点重跑。
+"""流水线编排器：8 阶段状态机 + 后台执行 + SSE 事件广播 + 断点重跑。
 
 - 每阶段产物即时落盘，UI 可随时读取（失败也能看已完成部分）
 - 阶段状态：pending -> running -> succeeded / failed / degraded / revised

@@ -2,7 +2,7 @@
 
 把 App Store 用户评论转化为**有证据支撑的产品需求文档（PRD）与可追溯测试用例**的可运行 Web 应用。
 
-输入一条美国区 App Store 应用链接（或导入 JSON/CSV 评论数据）+ 分析目标 + 模型配置，系统自动执行 **10 阶段工作流**，在 UI 中实时展示进度、中间产物与最终交付物。
+输入一条美国区 App Store 应用链接（或导入 JSON/CSV 评论数据）+ 分析目标 + 模型配置，系统自动执行 **8 个执行阶段流水线**（另含 UI 展示执行进度与交付物），在 UI 中实时展示进度、中间产物与最终交付物。
 
 > 核心能力：**模型驱动语义分析**（动态主题发现 / 问题整合 / 基于证据的发现 / PRD / 测试用例）+ **确定性规则**（采集 / 清洗去重 / 统计 / 可追溯性验证），结论严格区分"确定性统计"与"模型推断"。
 
@@ -14,7 +14,7 @@
 - 📥 支持导入 **JSON / CSV** 评论数据集（格式见 [导入格式](#导入格式)）
 - 🎯 自由指定分析目标/约束（订阅转化、可用性、特定版本、仅低分评论……），系统动态确定分析范围
 - 🧠 **内置多 LLM 提供商**（OpenAI / Anthropic / DeepSeek / Gemini / 本地 Ollama / 自定义），选择后填写 Key 即可使用；Key 仅存本机（本地配置文件，不入库）
-- 🔄 10 阶段流水线：范围确定 → 采集 → 清洗去重 → **模型驱动分析** → 证据评估 → PRD → 测试用例 → **可追溯性验证**，SSE 实时进度
+- 🔄 8 个执行阶段流水线：范围确定 → 采集 → 清洗去重 → **模型驱动分析** → 证据评估 → PRD → 测试用例 → **可追溯性验证**，SSE 实时进度
 - 🧾 每个发现均附**来源评论、样本数、置信度、冲突证据、不确定性**；统计结论与模型结论分区展示
 - ✅ 评论 → 发现 → 需求 → 测试用例 全链路自动校验，无依据结论被删除 / 修订 / 标注为假设
 - 💾 内置**离线缓存示例**（数据真实采集，语义产物明确标注为演示），无网 / 无 Key 时也可完整评审
@@ -38,24 +38,25 @@ pip install -r requirements.txt
 ```
 
 
-### 2. 构建前端
-
-构建产物（`backend/app/static/`）为可再生成文件，**不入库**（已 gitignore）。首次使用或修改前端源码后需构建一次：
-
-```bash
-cd frontend
-npm install
-npm run build          # 产物输出到 backend/app/static
-```
-
-### 3. 启动
+### 2. 启动后端
 
 ```bash
 cd backend
 uvicorn app.main:app --app-dir . --port 8000
 ```
 
-打开 http://127.0.0.1:8000 即可使用。
+后端提供 API（含 `/docs` 交互式文档）。
+
+### 3. 启动前端
+
+```bash
+cd frontend
+npm run dev          # 启动 Vite 开发服务器 http://127.0.0.1:5173
+```
+
+Vite 已配置将 `/api` 请求代理到后端 `:8000`，前端改代码即时热更新。
+
+> **部署时**：运行 `npm run build` 构建前端，产物输出到 `backend/app/static/`，再通过 Nginx 等反向代理同时托管 API 和静态文件。
 
 ### 4. 运行测试
 
@@ -71,7 +72,7 @@ pytest
 1. **输入链接**：默认已填示例链接 `https://apps.apple.com/us/app/workout-for-women-home-gym/id839285684`，可改为任意美国区链接；或切换到"导入评论数据"上传 JSON/CSV 文件。
 2. **设置目标**：填写分析目标（如"订阅转化"），或点击快捷标签。
 3. **选择模型**：选择提供商 → 自动带出 Base URL 与模型 → 填写 API Key（Ollama 本地可留空）→ 可点"测试连接"。
-4. 点击**开始**，观察 10 阶段进度；完成后在 Tab 中查看：
+4. 点击**开始**，观察 8 个执行阶段进度；完成后在 Tab 中查看：
    - 原始评论 / 清洗数据 / 主题分类 / 发现（📊统计 vs 🤖模型）/ 证据报告 / PRD / 测试用例 / 追溯报告
 5. **无网 / 无 Key**：首页"④ 离线缓存示例"可直接打开完整结果。
 
@@ -182,7 +183,7 @@ id,title,content,rating,version,lang,country,date,author
 ```
 ├── backend/
 │   ├── app/
-│   │   ├── main.py               # FastAPI 入口 + 静态托管 + SSE
+│   │   ├── main.py               # FastAPI 入口 + API + SSE
 │   │   ├── config.py             # 环境配置
 │   │   ├── schemas.py            # Pydantic 数据模型（发现/PRD/用例…）
 │   │   ├── storage.py            # JSON 落盘 + SQLite 元数据 + 缓存
@@ -196,11 +197,11 @@ id,title,content,rating,version,lang,country,date,author
 │   │   │   ├── importing.py      # JSON/CSV 导入
 │   │   │   └── stats.py          # 确定性统计
 │   │   └── pipeline/
-│   │       ├── orchestrator.py   # 10 阶段状态机 + SSE + 线程池 LLM
+│   │       ├── orchestrator.py   # 8 阶段状态机 + SSE + 线程池 LLM
 │   │       └── stages/           # scope/collect/clean/analyze/evidence/prd/tests/validate
 │   ├── scripts/generate_cache.py # 离线缓存示例生成
 │   └── tests/                    # pytest（21 项：清洗/导入/追溯/模型驱动链路）
-├── frontend/                     # Vue 3 + Vite（构建到 backend/app/static）
+├── frontend/                     # Vue 3 + Vite（npm run dev 热更新 / npm run build 产物到 backend/app/static/）
 ├── data/
 │   ├── cache/                    # 离线缓存示例（提交）
 │   └── runs/                     # 运行时数据（gitignore）
@@ -221,7 +222,7 @@ id,title,content,rating,version,lang,country,date,author
 | 发现区分证据/统计/模型/不确定性/矛盾 | `kind` 字段 + UI 分区 + 置信度/冲突/不确定性字段 |
 | PRD 基于用户问题、边界/优先级/版本清晰 | 阶段 6 生成需求+版本拆分，引用发现与评论 |
 | 测试用例覆盖 PRD 且可追溯到评论 | 阶段 7 用例关联需求与评论；阶段 8 双向校验 |
-| UI 清晰展示工作流与结果、本地可运行 | 10 阶段进度 + 9 个交付物 Tab；一条命令启动 |
+| UI 清晰展示工作流与结果、本地可运行 | 8 阶段进度 + 9 个交付物 Tab；前后端分别启动 |
 | 运行期展示模型驱动语义分析 | LLM 客户端、提示词、降级策略文档化并实际运行 |
 
 ---

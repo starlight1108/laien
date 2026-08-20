@@ -1,6 +1,6 @@
 <template>
   <div class="card">
-    <h2>工作流进度（10 阶段）</h2>
+    <h2>工作流进度（8 个执行阶段 + UI 展示）</h2>
     <div class="steps">
       <div
         v-for="s in stages"
