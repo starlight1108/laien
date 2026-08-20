@@ -37,15 +37,8 @@ cd backend
 pip install -r requirements.txt
 ```
 
-### 2. 配置环境（可选）
 
-```bash
-cp .env.example .env   # 按需填写；真实 Key 禁止提交
-```
-
-> UI 输入优先于环境变量。无 `.env` 时系统仍可运行（在线采集 + 规则阶段；模型阶段会降级并透明标注）。
-
-### 3. 构建前端（可选）
+### 2. 构建前端
 
 构建产物（`backend/app/static/`）为可再生成文件，**不入库**（已 gitignore）。首次使用或修改前端源码后需构建一次：
 
@@ -55,7 +48,7 @@ npm install
 npm run build          # 产物输出到 backend/app/static
 ```
 
-### 4. 启动
+### 3. 启动
 
 ```bash
 cd backend
@@ -64,7 +57,7 @@ uvicorn app.main:app --app-dir . --port 8000
 
 打开 http://127.0.0.1:8000 即可使用。
 
-### 5. 运行测试
+### 4. 运行测试
 
 ```bash
 cd backend
